@@ -1,0 +1,15 @@
+{
+  "name": "com.blacktundra.assetimport",
+  "version": "1.0.0",
+  "displayName": "Asset Import",
+  "description": "Allows the importation of assets at runtime into Unity.",
+  "unity": "2020.3",
+  "type": "library",
+  "hideInEditor": false,
+  "keywords": [
+    "data",
+    "database",
+    "save",
+	"load"
+  ]
+}
