@@ -69,18 +69,18 @@ namespace BlackTundra.AssetImporter.Importers {
                         if (dataCount != 3) throw new FormatException($"Invalid face at line `{i + 1}`.");
                         for (int t = 1; t < 4; t++) { // iterate each triangle
                             string[] elements = lineData[t].Split('/', StringSplitOptions.None);
-                            int uvChannel = 0, uvIndex = 1;
+                            int uvIndex = 0, normalIndex = 0;
                             switch (elements.Length) {
                                 case 3: { // uv index
-                                    int.TryParse(elements[2], out uvIndex);
+                                    int.TryParse(elements[2], out normalIndex);
                                     goto case 2;
                                 }
                                 case 2: { // uv channel
-                                    int.TryParse(elements[1], out uvChannel);
+                                    int.TryParse(elements[1], out uvIndex);
                                     goto case 1;
                                 }
                                 case 1: { // vertex index
-                                    triangles.Add(new VertexData(int.Parse(elements[0]) - 1, uvChannel - 1, uvIndex - 1)); // add the triangle
+                                    triangles.Add(new VertexData(int.Parse(elements[0]) - 1, uvIndex - 1, normalIndex - 1)); // add the triangle
                                     break;
                                 }
                                 default: throw new FormatException($"Unable to parse triangle {t} in face at line `{i + 1}`.");
@@ -105,7 +105,7 @@ namespace BlackTundra.AssetImporter.Importers {
                                 float.Parse(lineData[1]),
                                 float.Parse(lineData[2]),
                                 float.Parse(lineData[3])
-                            ).normalized
+                            )
                         );
                         break;
                     }
