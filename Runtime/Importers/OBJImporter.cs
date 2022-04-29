@@ -1,16 +1,18 @@
+//#define ASSET_IMPORTER_OBJ_FAIL_ON_UNKNOWN_CMD
+
 using BlackTundra.AssetImporter.Importers.Utility;
 
 using System;
 using System.Collections.Generic;
 
 using UnityEngine;
-using UnityEngine.Rendering;
 
 namespace BlackTundra.AssetImporter.Importers {
 
     public static class OBJImporter {
 
-        public static Mesh Import(in string obj) {
+        public static Mesh Import(in string name, in string obj, in MeshBuilderOptions options = 0) {
+            if (name == null) throw new ArgumentNullException(nameof(name));
             if (obj == null) throw new ArgumentNullException(nameof(obj));
             // find lines:
             string[] lines = obj.Split(
@@ -118,16 +120,17 @@ namespace BlackTundra.AssetImporter.Importers {
                         break;
                     }
                     case "#": break; // comment
-                    default: throw new FormatException($"Invalid line type: `{lineData[0]}`.");
+                    default: {
+#if ASSET_IMPORTER_OBJ_FAIL_ON_UNKNOWN_CMD
+                        throw new FormatException($"Invalid line type: `{lineData[0]}`.");
+#else
+                        break;
+#endif
+                    }
                 }
             }
             // build mesh:
-            return MeshBuilder.Build(
-                verticies,
-                uvs,
-                normals,
-                triangles
-            );
+            return MeshBuilder.Build(name, verticies, uvs, normals, triangles, options);
         }
 
     }
