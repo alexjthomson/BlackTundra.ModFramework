@@ -20,7 +20,7 @@ namespace BlackTundra.ModFramework.Importers {
 
         #region Initialise
 
-        [CoreInitialise]
+        [CoreInitialise(-100000)]
         private static void Initialise() {
             FileSystemReference modsFsr = new FileSystemReference(FileSystem.LocalModsDirectory, true, true);
             FileSystemReference[] modDirectories = modsFsr.GetDirectories();
