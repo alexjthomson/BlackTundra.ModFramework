@@ -1,6 +1,6 @@
 using System;
 
-namespace BlackTundra.AssetImporter.Importers.Utility {
+namespace BlackTundra.ModFramework.Importers.Utility {
 
     /// <summary>
     /// Detaials how to build a mesh.

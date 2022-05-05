@@ -19,6 +19,7 @@
 		"runtime"
 	],
 	"dependencies": {
-		"com.blacktundra.foundation": "2.0.1"
+		"com.blacktundra.foundation": "2.0.1",
+		"com.unity.nuget.newtonsoft-json": "2.0.0"
 	}
 }
