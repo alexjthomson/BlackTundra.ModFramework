@@ -319,10 +319,13 @@ namespace BlackTundra.ModFramework {
             FileSystemReference[] files = fsr.GetFiles();
             for (int i = files.Length - 1; i >= 0; i--) {
                 file = files[i];
-                if (file.FileName.Equals(ManifestFileName, StringComparison.OrdinalIgnoreCase)) continue;
+                string fileName = file.FileName;
+                if (fileName[0] == '.' || fileName.Equals(ManifestFileName, StringComparison.OrdinalIgnoreCase)) continue; // skip hidden files and the manifest file
                 try {
                     ModAsset asset = new ModAsset(this, file, fsrNameStartIndex);
-                    assets.Add(asset.type, asset);
+                    if (asset.type != ModAssetType.None) {
+                        assets.Add(asset.type, asset);
+                    }
                 } catch (Exception exception) {
                     ModImporter.ConsoleFormatter.Error(
                         $"Mod `{_name}` failed to discover asset `{file.AbsolutePath[fsrNameStartIndex..]}`",
@@ -331,8 +334,11 @@ namespace BlackTundra.ModFramework {
                 }
             }
             // discover directories:
+            FileSystemReference directory;
             FileSystemReference[] directories = fsr.GetDirectories();
             for (int i = directories.Length - 1; i >= 0; i--) {
+                directory = directories[i];
+                if (directory.DirectoryName[0] == '.') continue; // skip hidden directories
                 DiscoverAssets(directories[i], fsrNameStartIndex, assets);
             }
         }
