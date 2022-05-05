@@ -57,8 +57,11 @@ namespace BlackTundra.ModFramework.Importers {
                 mod = null;
                 return false;
             }
+            int assetCount = mod.AssetCount;
             int dependencyCount = mod.DependencyCount;
-            ConsoleFormatter.Info($"Imported mod `{fsr.DirectoryName}` with {dependencyCount} {(dependencyCount == 1 ? "dependency" : "dependencies")}.");
+            ConsoleFormatter.Info(
+                $"Imported mod `{fsr.DirectoryName}` with {dependencyCount} {(dependencyCount == 1 ? "dependency" : "dependencies")} and {assetCount} {(assetCount == 1 ? "asset" : "assets")}."
+            );
             return true;
         }
 

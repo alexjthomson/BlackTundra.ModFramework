@@ -1,15 +1,28 @@
 //#define ASSET_IMPORTER_OBJ_FAIL_ON_UNKNOWN_CMD
 
+using BlackTundra.Foundation.IO;
 using BlackTundra.ModFramework.Importers.Utility;
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 using UnityEngine;
 
 namespace BlackTundra.ModFramework.Importers {
 
     public static class OBJImporter {
+
+        public static Mesh Import(in string name, in FileSystemReference fsr, in MeshBuilderOptions options = 0) {
+            if (name == null) throw new ArgumentNullException(nameof(name));
+            if (fsr == null) throw new ArgumentNullException(nameof(fsr));
+            if (!fsr.IsFile) throw new ArgumentException($"{nameof(fsr)} must reference a file.");
+            if (FileSystem.Read(fsr, out string obj, FileFormat.Standard)) {
+                return Import(name, obj, options);
+            } else {
+                throw new IOException($"Failed to read OBJ file at `{fsr.AbsolutePath}`.");
+            }
+        }
 
         public static Mesh Import(in string name, in string obj, in MeshBuilderOptions options = 0) {
             if (name == null) throw new ArgumentNullException(nameof(name));

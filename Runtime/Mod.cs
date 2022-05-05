@@ -1,10 +1,13 @@
+using BlackTundra.Foundation.Collections.Generic;
 using BlackTundra.Foundation.IO;
+using BlackTundra.Foundation.Utility;
 using BlackTundra.ModFramework.Importers;
 
 using Newtonsoft.Json.Linq;
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -22,7 +25,7 @@ namespace BlackTundra.ModFramework {
         /// <summary>
         /// Mod <see cref="Dictionary{TKey, TValue}"/>.
         /// </summary>
-        private static readonly Dictionary<string, Mod> ModDictionary = new Dictionary<string, Mod>();
+        private static readonly Dictionary<int, Mod> ModDictionary = new Dictionary<int, Mod>();
 
         /// <summary>
         /// Regex pattern used for matching a mod name.
@@ -45,12 +48,10 @@ namespace BlackTundra.ModFramework {
         /// <summary>
         /// Local path to expect to find the mod manifest file.
         /// </summary>
-        public const string LocalManifestPath = "manifest.json";
+        public const string ManifestFileName = "manifest.json";
 
-        /// <summary>
-        /// Local path to expect to find mod assets.
-        /// </summary>
-        public const string LocalAssetPath = "Assets/";
+        public const ulong ModGUIDMask = 0b11111111_11111111_11111111_11111111_00000000_00000000_00000000_00000000;
+        public const ulong ModAssetGUIDMask = 0b00000000_00000000_00000000_00000000_11111111_11111111_11111111_11111111;
 
         #endregion
 
@@ -65,6 +66,11 @@ namespace BlackTundra.ModFramework {
         /// Name of the <see cref="Mod"/>.
         /// </summary>
         private readonly string _name;
+
+        /// <summary>
+        /// Part of the GUID that makes up an assets unique GUID.
+        /// </summary>
+        public readonly ulong _guidIdentifier;
 
         /// <summary>
         /// Version of the <see cref="Mod"/>.
@@ -91,9 +97,19 @@ namespace BlackTundra.ModFramework {
         /// </summary>
         private ModDependency[] _dependencies;
 
+        /// <summary>
+        /// Assets associated with the <see cref="Mod"/>.
+        /// </summary>
+        private Dictionary<ulong, ModAsset> _assets;
+
         #endregion
 
         #region property
+
+        /// <summary>
+        /// ID of the <see cref="Mod"/>. This will be different every time the application is launched.
+        /// </summary>
+        public int id => (int)(_guidIdentifier >> 32);
 
         /// <inheritdoc cref="_name"/>
         public string name => _name;
@@ -117,6 +133,11 @@ namespace BlackTundra.ModFramework {
         /// </summary>
         public int AuthorCount => _authors.Length;
 
+        /// <summary>
+        /// Total number of assets that are part of the <see cref="Mod"/>.
+        /// </summary>
+        public int AssetCount => _assets.Count;
+
         #endregion
 
         #region constructor
@@ -131,15 +152,20 @@ namespace BlackTundra.ModFramework {
             // assign mod name:
             _name = (string)manifest["name"]; // read mod name
             if (!ValidateName(_name)) throw new FormatException("Invalid mod name.");
-            if (ModDictionary.ContainsKey(_name)) throw new Exception("Duplicate mod with same name already exists.");
+            int modId = _name.GetHashCode();
+            if (ModDictionary.ContainsKey(modId)) throw new Exception("Duplicate mod with same name already exists.");
             string directoryName = fsr.DirectoryName;
             if (!_name.Equals(directoryName, StringComparison.OrdinalIgnoreCase)) throw new Exception(
                 $"Mod name does not match mod directory name (mod_name: `{_name}`, directory_name: `{directoryName}`)."
             );
+            // calculate guid mask:
+            _guidIdentifier = ((ulong)modId & ModAssetGUIDMask) << 32;
+            // create assets dictionary:
+            _assets = new Dictionary<ulong, ModAsset>();
             // reload mod content:
             Reload(manifest);
             // register mod:
-            ModDictionary[_name] = this; // add to mod dictionary
+            ModDictionary[modId] = this; // add to mod dictionary
         }
 
         #endregion
@@ -164,8 +190,7 @@ namespace BlackTundra.ModFramework {
         /// </summary>
         /// <param name="validate">When <c>true</c>, other mods will be validated after this <see cref="Mod"/> is unregistered.</param>
         public void Unregister(in bool validate) {
-            if (ModDictionary.ContainsKey(_name)) {
-                ModDictionary.Remove(_name);
+            if (ModDictionary.Remove(id)) {
                 ModImporter.ConsoleFormatter.Info($"Unloaded mod `{_name}`.");
                 if (validate) ValidateMods();
             }
@@ -213,32 +238,124 @@ namespace BlackTundra.ModFramework {
             // read dependencies:
             JObject jsonDependencies = (JObject)manifest["dependencies"];
             if (jsonDependencies != null) {
+                List<int> dependencyTracker = new List<int>();
                 List<ModDependency> dependencies = new List<ModDependency>();
                 foreach (JProperty dependency in jsonDependencies.Children<JProperty>()) {
+                    string dependencyName = dependency.Name.ToLower();
+                    int dependencyHashCode = dependencyName.GetHashCode();
+                    if (dependencyTracker.Contains(dependencyHashCode)) throw new FormatException(
+                        $"Multiple dependency entries for dependency `{dependencyName}`"
+                    );
                     dependencies.Add(
                         new ModDependency(
                             dependency.Name,
                             Version.Parse((string)dependency.Value)
                         )
                     );
+                    dependencyTracker.Add(dependencyHashCode);
                 }
                 _dependencies = dependencies.ToArray();
             } else {
                 _dependencies = new ModDependency[0];
             }
             // reload content:
-            ReloadContent();
+            ReloadAssets();
         }
 
         #endregion
 
-        #region ReloadContent
+        #region ReloadAssets
 
         /// <summary>
         /// Reloads the mod content.
         /// </summary>
-        private void ReloadContent() {
-            // implement here
+        private void ReloadAssets() {
+            // remove existing content:
+            RemoveExistingAssets();
+            // find absolute path length:
+            string absolutePath = fsr.AbsolutePath;
+            int absolutePathLength = absolutePath.Length;
+            // discover assets:
+            OrderedList<ModAssetType, ModAsset> assets = new OrderedList<ModAssetType, ModAsset>();
+            DiscoverAssets(fsr, absolutePathLength, assets);
+            ModImporter.ConsoleFormatter.Info($"Mod `{_name}` discovered {assets.Count} assets.");
+            // import assets:
+            ImportAssets(assets);
+        }
+
+        #endregion
+
+        #region RemoveExistingAssets
+
+        /// <summary>
+        /// Removes any existing assets from the mod.
+        /// </summary>
+        private void RemoveExistingAssets() {
+            // dispose of each asset:
+            foreach (ModAsset asset in _assets.Values) {
+                try {
+                    asset.Dispose();
+                } catch (Exception exception) {
+                    ModImporter.ConsoleFormatter.Error(
+                        $"Mod `{_name}` failed to dispose of asset `{asset.name}`.",
+                        exception
+                    );
+                }
+            }
+            // clear assets dictionary:
+            _assets.Clear();
+        }
+
+        #endregion
+
+        #region DiscoverAssets
+
+        /// <summary>
+        /// Discovers assets inside the specified <paramref name="fsr"/> and adds them to the <paramref name="assets"/> list.
+        /// </summary>
+        private void DiscoverAssets(in FileSystemReference fsr, in int fsrNameStartIndex, in OrderedList<ModAssetType, ModAsset> assets) {
+            // discover files:
+            FileSystemReference file;
+            FileSystemReference[] files = fsr.GetFiles();
+            for (int i = files.Length - 1; i >= 0; i--) {
+                file = files[i];
+                if (file.FileName.Equals(ManifestFileName, StringComparison.OrdinalIgnoreCase)) continue;
+                try {
+                    ModAsset asset = new ModAsset(this, file, fsrNameStartIndex);
+                    assets.Add(asset.type, asset);
+                } catch (Exception exception) {
+                    ModImporter.ConsoleFormatter.Error(
+                        $"Mod `{_name}` failed to discover asset `{file.AbsolutePath[fsrNameStartIndex..]}`",
+                        exception
+                    );
+                }
+            }
+            // discover directories:
+            FileSystemReference[] directories = fsr.GetDirectories();
+            for (int i = directories.Length - 1; i >= 0; i--) {
+                DiscoverAssets(directories[i], fsrNameStartIndex, assets);
+            }
+        }
+
+        #endregion
+
+        #region ImportAssets
+
+        private void ImportAssets(in OrderedList<ModAssetType, ModAsset> assets) {
+            int assetCount = assets.Count;
+            ModAsset asset;
+            int failCount = 0;
+            for (int i = 0; i < assetCount; i++) {
+                asset = assets[i];
+                try {
+                    asset.Import();
+                    _assets[asset.guid] = asset;
+                } catch (Exception exception) {
+                    ModImporter.ConsoleFormatter.Error($"Mod `{_name}` failed to import asset `{asset.name}`.", exception);
+                    failCount++;
+                }
+            }
+            ModImporter.ConsoleFormatter.Info($"Mod `{_name}` imported {assetCount - failCount}/{assetCount} assets.");
         }
 
         #endregion
@@ -258,7 +375,7 @@ namespace BlackTundra.ModFramework {
                 ModDependency dependencyInfo;
                 for (int i = dependencyCount - 1; i >= 0; i--) {
                     dependencyInfo = _dependencies[i];
-                    if (!ModDictionary.TryGetValue(dependencyInfo.name, out Mod dependency) || dependency.version < dependencyInfo.version) {
+                    if (!ModDictionary.TryGetValue(dependencyInfo.name.GetHashCode(), out Mod dependency) || dependency.version < dependencyInfo.version) {
                         missingDependencies.Add(dependencyInfo.ToString());
                     }
                 }
@@ -283,6 +400,12 @@ namespace BlackTundra.ModFramework {
 
         #endregion
 
+        #region ToString
+
+        public sealed override string ToString() => $"{_name} {version} [{id.ToHex()}]: {_assets.Count}a {_dependencies.Length}d";
+
+        #endregion
+
         #region ReadManifest
 
         /// <summary>
@@ -294,9 +417,12 @@ namespace BlackTundra.ModFramework {
             // find absolute path to mod directory:
             string absolutePath = modDirectory.AbsolutePath;
             // load mod manifest:
-            FileSystemReference manifestReference = new FileSystemReference(absolutePath + LocalManifestPath, false, false);
-            FileSystem.Read(manifestReference, out string manifestString, FileFormat.Standard);
-            return JObject.Parse(manifestString);
+            FileSystemReference manifestReference = new FileSystemReference(absolutePath + ManifestFileName, false, false);
+            if (FileSystem.Read(manifestReference, out string manifestString, FileFormat.Standard)) {
+                return JObject.Parse(manifestString);
+            } else {
+                throw new IOException($"Failed to read mod manifest file at `{manifestReference.AbsolutePath}`.");
+            }
         }
 
         #endregion
@@ -346,7 +472,7 @@ namespace BlackTundra.ModFramework {
         /// </returns>
         public static bool IsModLoaded(in string name) {
             if (name == null) throw new ArgumentNullException(nameof(name));
-            return ModDictionary.ContainsKey(name);
+            return ModDictionary.ContainsKey(name.GetHashCode());
         }
 
         #endregion
@@ -361,8 +487,16 @@ namespace BlackTundra.ModFramework {
         /// </exception>
         public static Mod GetMod(in string name) {
             if (name == null) throw new ArgumentNullException(nameof(name));
-            return ModDictionary.TryGetValue(name, out Mod mod) ? mod : throw new KeyNotFoundException(name);
+            return GetMod(name.GetHashCode());
         }
+
+        /// <returns>
+        /// Returns the loaded <see cref="Mod"/> with specified <paramref name="id"/>.
+        /// </returns>
+        /// <exception cref="KeyNotFoundException">
+        /// Thrown if there is not a <see cref="Mod"/> with the specified <paramref name="id"/> loaded into memory.
+        /// </exception>
+        public static Mod GetMod(in int id) => ModDictionary.TryGetValue(id, out Mod mod) ? mod : throw new KeyNotFoundException(id.ToHex());
 
         #endregion
 
@@ -374,7 +508,65 @@ namespace BlackTundra.ModFramework {
         /// </returns>
         public static bool TryGetMod(in string name, out Mod mod) {
             if (name == null) throw new ArgumentNullException(nameof(name));
-            return ModDictionary.TryGetValue(name, out mod);
+            return TryGetMod(name.GetHashCode(), out mod);
+        }
+
+        public static bool TryGetMod(in int id, out Mod mod) => ModDictionary.TryGetValue(id, out mod);
+
+        #endregion
+
+        #region GetAssetGUID
+
+        public ulong GetAssetGUID(in string assetName) => _guidIdentifier | ((ulong)assetName.GetHashCode() & ModAssetGUIDMask);
+
+        public static ulong GetAssetGUID(in int modId, in string assetName) => (((ulong)modId & ModAssetGUIDMask) << 32) | ((ulong)assetName.GetHashCode() & ModAssetGUIDMask);
+
+        #endregion
+
+        #region GetAsset
+
+        public ModAsset GetAsset(in string name) {
+            if (name == null) throw new ArgumentNullException(nameof(name));
+            return GetAsset(_guidIdentifier & ((ulong)name.GetHashCode() & ModAssetGUIDMask));
+        }
+
+        public ModAsset GetAsset(in ulong guid) {
+            if (_assets.TryGetValue(guid, out ModAsset value)) {
+                return value;
+            } else {
+                throw new KeyNotFoundException(guid.ToHex());
+            }
+        }
+
+        #endregion
+
+        #region TryGetAsset
+
+        public bool TryGetAsset(in string name, out ModAsset asset) {
+            if (name == null) throw new ArgumentNullException(nameof(name));
+            return TryGetAsset(_guidIdentifier & ((ulong)name.GetHashCode() & ModAssetGUIDMask), out asset);
+        }
+
+        private bool InternalTryGetAsset(in ulong guid, out ModAsset asset) => _assets.TryGetValue(guid, out asset);
+
+        public static bool TryGetAsset(in string modName, in string assetName, out ModAsset asset) {
+            int modId = modName.GetHashCode();
+            if (ModDictionary.TryGetValue(modId, out Mod mod)) {
+                return mod.TryGetAsset(assetName, out asset);
+            } else {
+                asset = null;
+                return false;
+            }
+        }
+
+        public static bool TryGetAsset(in ulong guid, out ModAsset asset) {
+            int modId = (int)((guid & ModGUIDMask) >> 32);
+            if (ModDictionary.TryGetValue(modId, out Mod mod)) {
+                return mod._assets.TryGetValue(guid, out asset);
+            } else {
+                asset = null;
+                return false;
+            }
         }
 
         #endregion

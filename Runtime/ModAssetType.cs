@@ -1,8 +1,16 @@
 namespace BlackTundra.ModFramework {
 
-    public enum AssetType : int {
+    /// <summary>
+    /// Describes the type of an asset.
+    /// </summary>
+    public enum ModAssetType : int {
 
         #region special
+
+        /// <summary>
+        /// <c>.config</c> file.
+        /// </summary>
+        Config = -1,
 
         /// <summary>
         /// No asset type (no extension).
@@ -10,56 +18,46 @@ namespace BlackTundra.ModFramework {
         None = 0,
 
         /// <summary>
-        /// Unknown asset type.
+        /// <c>.bundle</c> file.
         /// </summary>
-        Unknown = -1,
-        
-        /// <summary>
-        /// Invalid asset type.
-        /// </summary>
-        Invalid = -2,
-
-        /// <summary>
-        /// .config file.
-        /// </summary>
-        Config = -3,
+        AssetBundle = 1,
 
         #endregion
 
         #region logic
 
         /// <summary>
-        /// CSharp script.
+        /// <c>.cs</c> script.
         /// </summary>
-        ScriptCSharp = 1,
+        ScriptCSharp = -1000,
 
         /// <summary>
-        /// Shader script.
+        /// <c>.shader</c> script.
         /// </summary>
-        ScriptShader = 2,
+        ScriptShader = -1001,
 
         #endregion
 
         #region model
 
         /// <summary>
-        /// .obj file.
+        /// <c>.obj</c> file.
         /// </summary>
-        ModelObj = 100,
+        ModelObj = 1000,
 
         /// <summary>
-        /// .fbx file.
+        /// <c>.fbx</c> file.
         /// </summary>
-        ModelFbx = 101,
+        ModelFbx = 1001,
 
         #endregion
 
         #region json
 
         /// <summary>
-        /// .obj.json file.
+        /// <c>.json</c> file.
         /// </summary>
-        JsonObj = 200,
+        JsonObj = 10000,
 
         #endregion
 
