@@ -1,6 +1,6 @@
 {
-    "name": "BlackTundra.AssetImport.Runtime",
-    "rootNamespace": "",
+    "name": "BlackTundra.ModFramework.Runtime",
+    "rootNamespace": "BlackTundra.ModFramework",
     "references": [
         "GUID:77b61193d6b3a4c449fc64980b211e9f"
     ],
