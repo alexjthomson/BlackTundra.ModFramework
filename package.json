@@ -1,15 +1,24 @@
 {
-  "name": "com.blacktundra.assetimport",
-  "version": "1.0.0",
-  "displayName": "Asset Import",
-  "description": "Allows the importation of assets at runtime into Unity.",
-  "unity": "2020.3",
-  "type": "library",
-  "hideInEditor": false,
-  "keywords": [
-    "data",
-    "database",
-    "save",
-	"load"
-  ]
+	"name": "com.blacktundra.modframework",
+	"version": "1.0.0",
+	"displayName": "Mod Framework",
+	"description": "Implements mod support to Unity.",
+	"unity": "2020.3",
+	"type": "library",
+	"hideInEditor": false,
+	"author": {
+		"name": "Alex Thomson",
+		"email": "alexjthomson1882@gmail.com",
+		"url": "https://github.com/alexjthomson1882"
+	},
+	"keywords": [
+		"asset",
+		"import",
+		"mod",
+		"framework",
+		"runtime"
+	],
+	"dependencies": {
+		"com.blacktundra.foundation": "2.0.1"
+	}
 }
