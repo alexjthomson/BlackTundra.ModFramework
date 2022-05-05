@@ -34,6 +34,12 @@ namespace BlackTundra.ModFramework {
 
         #endregion
 
+        #region logic
+
+        public override string ToString() => $"{name}: {version}";
+
+        #endregion
+
     }
 
 }

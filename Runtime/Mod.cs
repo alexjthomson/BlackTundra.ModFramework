@@ -1,3 +1,4 @@
+using BlackTundra.Foundation;
 using BlackTundra.Foundation.IO;
 using BlackTundra.ModFramework.Importers;
 
@@ -5,6 +6,7 @@ using Newtonsoft.Json.Linq;
 
 using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Text.RegularExpressions;
 
 using Version = BlackTundra.Foundation.Version;
@@ -106,6 +108,16 @@ namespace BlackTundra.ModFramework {
         /// <inheritdoc cref="_version"/>
         public Version version => _version;
 
+        /// <summary>
+        /// Total number of dependencies that the <see cref="Mod"/> has.
+        /// </summary>
+        public int DependencyCount => _dependencies.Length;
+
+        /// <summary>
+        /// Total number of authors that the <see cref="Mod"/> has.
+        /// </summary>
+        public int AuthorCount => _authors.Length;
+
         #endregion
 
         #region constructor
@@ -133,14 +145,6 @@ namespace BlackTundra.ModFramework {
 
         #endregion
 
-        #region destructor
-
-        ~Mod() {
-            Unregister();
-        }
-
-        #endregion
-
         #region logic
 
         #region Register
@@ -159,8 +163,13 @@ namespace BlackTundra.ModFramework {
         /// <summary>
         /// Unregisters the mod (unloads from memory).
         /// </summary>
-        public void Unregister() {
-
+        /// <param name="validate">When <c>true</c>, other mods will be validated after this <see cref="Mod"/> is unregistered.</param>
+        public void Unregister(in bool validate) {
+            if (ModDictionary.ContainsKey(_name)) {
+                ModDictionary.Remove(_name);
+                ModImporter.ConsoleFormatter.Info($"Unloaded mod `{_name}`.");
+                if (validate) ValidateMods();
+            }
         }
 
         #endregion
@@ -203,18 +212,18 @@ namespace BlackTundra.ModFramework {
                 _authors = new ModAuthor[0];
             }
             // read dependencies:
-            JArray jsonDependencies = (JArray)manifest["dependencies"];
+            JObject jsonDependencies = (JObject)manifest["dependencies"];
             if (jsonDependencies != null) {
-                int dependencyCount = jsonDependencies.Count;
-                _dependencies = new ModDependency[dependencyCount];
-                JToken dependency;
-                for (int i = 0; i < dependencyCount; i++) {
-                    dependency = jsonDependencies[i];
-                    _dependencies[i] = new ModDependency(
-                        (string)dependency["name"],
-                        Version.Parse((string)dependency["version"])
+                List<ModDependency> dependencies = new List<ModDependency>();
+                foreach (JProperty dependency in jsonDependencies.Children<JProperty>()) {
+                    dependencies.Add(
+                        new ModDependency(
+                            dependency.Name,
+                            Version.Parse((string)dependency.Value)
+                        )
                     );
                 }
+                _dependencies = dependencies.ToArray();
             } else {
                 _dependencies = new ModDependency[0];
             }
@@ -231,6 +240,46 @@ namespace BlackTundra.ModFramework {
         /// </summary>
         private void ReloadContent() {
             // implement here
+        }
+
+        #endregion
+
+        #region Validate
+
+        private bool Validate() {
+            // validate name:
+            if (!ValidateName(_name)) {
+                ModImporter.ConsoleFormatter.Error($"Mod `{_name}` has an invalid name.");
+                return false;
+            }
+            // validate dependencies:
+            int dependencyCount = _dependencies.Length;
+            if (dependencyCount > 0) {
+                List<string> missingDependencies = new List<string>();
+                ModDependency dependencyInfo;
+                for (int i = dependencyCount - 1; i >= 0; i--) {
+                    dependencyInfo = _dependencies[i];
+                    if (!ModDictionary.TryGetValue(dependencyInfo.name, out Mod dependency) || dependency.version < dependencyInfo.version) {
+                        missingDependencies.Add(dependencyInfo.ToString());
+                    }
+                }
+                int missingDependencyCount = missingDependencies.Count;
+                if (missingDependencyCount > 0) {
+                    StringBuilder errorMessage = new StringBuilder("Mod `")
+                        .Append(_name)
+                        .Append("` is missing ")
+                        .Append(missingDependencyCount)
+                        .Append(missingDependencyCount == 1 ? " dependency: " : " dependencies: ")
+                        .Append(missingDependencies[0]);
+                    for (int i = 1; i < missingDependencyCount; i++) {
+                        errorMessage.Append(", ").Append(missingDependencies[i]);
+                    }
+                    ModImporter.ConsoleFormatter.Error(errorMessage.ToString());
+                    return false;
+                }
+            }
+            // all tests passed:
+            return true;
         }
 
         #endregion
@@ -261,6 +310,32 @@ namespace BlackTundra.ModFramework {
         public static bool ValidateName(in string name) {
             if (name == null) throw new ArgumentNullException(nameof(name));
             return name.Length > 0 && name.Length <= MaxModNameLength && ModNameRegex.IsMatch(name);
+        }
+
+        #endregion
+
+        #region ValidateMods
+
+        /// <summary>
+        /// Validates imported mods and removes any mods with missing dependencies.
+        /// </summary>
+        public static void ValidateMods() {
+            bool validate;
+            int modCount = ModDictionary.Count;
+            int failCount = 0;
+            do {
+                validate = false;
+                foreach (Mod mod in ModDictionary.Values) { // iterate each loaded mod
+                    if (!mod.Validate()) {
+                        mod.Unregister(false);
+                        validate = true;
+                        failCount++;
+                        break;
+                    }
+                }
+            } while (validate);
+            int validatedCount = modCount - failCount;
+            ModImporter.ConsoleFormatter.Info($"{validatedCount}/{modCount} mods validated; {failCount} {(failCount == 1 ? "mod" : "mods")} failed.");
         }
 
         #endregion

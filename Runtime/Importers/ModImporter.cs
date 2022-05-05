@@ -12,7 +12,7 @@ namespace BlackTundra.ModFramework.Importers {
 
         #region constant
 
-        private static readonly ConsoleFormatter ConsoleFormatter = new ConsoleFormatter(nameof(ModImporter));
+        internal static readonly ConsoleFormatter ConsoleFormatter = new ConsoleFormatter(nameof(ModImporter));
 
         #endregion
 
@@ -34,6 +34,7 @@ namespace BlackTundra.ModFramework.Importers {
                 if (TryImport(modFsr, out _)) importCount++;
             }
             ConsoleFormatter.Info($"Imported {importCount} mods.");
+            Mod.ValidateMods();
         }
 
         #endregion
@@ -56,7 +57,8 @@ namespace BlackTundra.ModFramework.Importers {
                 mod = null;
                 return false;
             }
-            ConsoleFormatter.Info($"Imported mod `{fsr.DirectoryName}`.");
+            int dependencyCount = mod.DependencyCount;
+            ConsoleFormatter.Info($"Imported mod `{fsr.DirectoryName}` with {dependencyCount} {(dependencyCount == 1 ? "dependency" : "dependencies")}.");
             return true;
         }
 
