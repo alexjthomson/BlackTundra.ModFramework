@@ -96,7 +96,7 @@ namespace BlackTundra.ModFramework.Utility {
             #endregion
 
             #region Mesh
-            { typeof(Mesh), (json, _) => Mod.GetAssetFromPath((string)json).value},
+            { typeof(Mesh), (json, _) => ModInstance.GetAssetFromPath((string)json).value},
             #endregion
 
             #region Material

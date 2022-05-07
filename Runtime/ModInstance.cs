@@ -20,20 +20,20 @@ namespace BlackTundra.ModFramework {
     /// <summary>
     /// Describes a mod loaded in at runtime.
     /// </summary>
-    public sealed class Mod {
+    public sealed class ModInstance {
 
         #region constant
 
         /// <summary>
         /// Mod <see cref="Dictionary{TKey, TValue}"/>.
         /// </summary>
-        private static readonly Dictionary<int, Mod> ModDictionary = new Dictionary<int, Mod>();
+        private static readonly Dictionary<int, ModInstance> ModDictionary = new Dictionary<int, ModInstance>();
 
         /// <summary>
-        /// A <see cref="PackedBuffer{T}"/> that contains a reference to every <see cref="Mod"/>. The order that each <see cref="Mod"/> appears in
-        /// this list is dependent on which <see cref="Mod"/> names are included in the <see cref="_processAfter"/> array for each <see cref="Mod"/>.
+        /// A <see cref="PackedBuffer{T}"/> that contains a reference to every <see cref="ModInstance"/>. The order that each <see cref="ModInstance"/> appears in
+        /// this list is dependent on which <see cref="ModInstance"/> names are included in the <see cref="_processAfter"/> array for each <see cref="ModInstance"/>.
         /// </summary>
-        private static readonly PackedBuffer<Mod> ModProcessingBuffer = new PackedBuffer<Mod>(0);
+        private static readonly PackedBuffer<ModInstance> ModProcessingBuffer = new PackedBuffer<ModInstance>(0);
 
         /// <summary>
         /// Regex pattern used for matching a mod name.
@@ -71,7 +71,7 @@ namespace BlackTundra.ModFramework {
         private readonly FileSystemReference fsr;
 
         /// <summary>
-        /// Name of the <see cref="Mod"/>.
+        /// Name of the <see cref="ModInstance"/>.
         /// </summary>
         private readonly string _name;
 
@@ -81,27 +81,27 @@ namespace BlackTundra.ModFramework {
         public readonly ulong _guidIdentifier;
 
         /// <summary>
-        /// Version of the <see cref="Mod"/>.
+        /// Version of the <see cref="ModInstance"/>.
         /// </summary>
         private Version _version;
 
         /// <summary>
-        /// Display name of the <see cref="Mod"/>.
+        /// Display name of the <see cref="ModInstance"/>.
         /// </summary>
         private string _displayName;
 
         /// <summary>
-        /// Description of the <see cref="Mod"/>.
+        /// Description of the <see cref="ModInstance"/>.
         /// </summary>
         private string _description;
 
         /// <summary>
-        /// Authors of the <see cref="Mod"/>.
+        /// Authors of the <see cref="ModInstance"/>.
         /// </summary>
         private ModAuthor[] _authors;
 
         /// <summary>
-        /// Dependencies of the <see cref="Mod"/>.
+        /// Dependencies of the <see cref="ModInstance"/>.
         /// </summary>
         private ModDependency[] _dependencies;
 
@@ -111,7 +111,7 @@ namespace BlackTundra.ModFramework {
         internal string[] _processAfter;
 
         /// <summary>
-        /// Assets associated with the <see cref="Mod"/>.
+        /// Assets associated with the <see cref="ModInstance"/>.
         /// </summary>
         internal readonly Dictionary<ulong, ModAsset> _assets;
 
@@ -120,7 +120,7 @@ namespace BlackTundra.ModFramework {
         #region property
 
         /// <summary>
-        /// ID of the <see cref="Mod"/>. This will be different every time the application is launched.
+        /// ID of the <see cref="ModInstance"/>. This will be different every time the application is launched.
         /// </summary>
         public int id => (int)(_guidIdentifier >> 32);
 
@@ -137,17 +137,17 @@ namespace BlackTundra.ModFramework {
         public Version version => _version;
 
         /// <summary>
-        /// Total number of dependencies that the <see cref="Mod"/> has.
+        /// Total number of dependencies that the <see cref="ModInstance"/> has.
         /// </summary>
         public int DependencyCount => _dependencies.Length;
 
         /// <summary>
-        /// Total number of authors that the <see cref="Mod"/> has.
+        /// Total number of authors that the <see cref="ModInstance"/> has.
         /// </summary>
         public int AuthorCount => _authors.Length;
 
         /// <summary>
-        /// Total number of assets that are part of the <see cref="Mod"/>.
+        /// Total number of assets that are part of the <see cref="ModInstance"/>.
         /// </summary>
         public int AssetCount => _assets.Count;
 
@@ -155,7 +155,7 @@ namespace BlackTundra.ModFramework {
 
         #region constructor
 
-        internal Mod(in FileSystemReference fsr) {
+        internal ModInstance(in FileSystemReference fsr) {
             if (fsr == null) throw new ArgumentNullException(nameof(fsr));
             if (!fsr.IsDirectory) throw new ArgumentException($"{nameof(fsr)} is not a directory.");
             this.fsr = fsr;
@@ -203,7 +203,7 @@ namespace BlackTundra.ModFramework {
         /// <summary>
         /// Unregisters the mod (unloads from memory).
         /// </summary>
-        /// <param name="updateOtherMods">When <c>true</c>, other mods will be validated after this <see cref="Mod"/> is unregistered.</param>
+        /// <param name="updateOtherMods">When <c>true</c>, other mods will be validated after this <see cref="ModInstance"/> is unregistered.</param>
         private void Unregister(in bool updateOtherMods) {
             if (ModDictionary.Remove(id)) {
                 ModImporter.ConsoleFormatter.Info($"Unloaded mod `{_name}`.");
@@ -327,7 +327,7 @@ namespace BlackTundra.ModFramework {
         internal static void ReloadAllAssets() {
             int modCount = ModProcessingBuffer.Count;
             for (int i = 0; i < modCount; i++) {
-                Mod mod = ModProcessingBuffer[i];
+                ModInstance mod = ModProcessingBuffer[i];
                 try {
                     mod.ReloadAssets();
                 } catch (Exception exception) {
@@ -386,7 +386,7 @@ namespace BlackTundra.ModFramework {
         #region UnloadAllAssets
 
         public static void UnloadAllAssets() {
-            Mod mod;
+            ModInstance mod;
             for (int i = ModProcessingBuffer.Count - 1; i >= 0; i--) {
                 mod = ModProcessingBuffer[i];
                 mod.UnloadAssets();
@@ -486,7 +486,7 @@ namespace BlackTundra.ModFramework {
                 ModDependency dependencyInfo;
                 for (int i = dependencyCount - 1; i >= 0; i--) {
                     dependencyInfo = _dependencies[i];
-                    if (!ModDictionary.TryGetValue(dependencyInfo.name.GetHashCode(), out Mod dependency) || dependency.version < dependencyInfo.version) {
+                    if (!ModDictionary.TryGetValue(dependencyInfo.name.GetHashCode(), out ModInstance dependency) || dependency.version < dependencyInfo.version) {
                         missingDependencies.Add(dependencyInfo.ToString());
                     }
                 }
@@ -541,7 +541,7 @@ namespace BlackTundra.ModFramework {
         #region ValidateName
 
         /// <returns>
-        /// Returns <c>true</c> if the <paramref name="name"/> is a valid <see cref="Mod"/> name.
+        /// Returns <c>true</c> if the <paramref name="name"/> is a valid <see cref="ModInstance"/> name.
         /// </returns>
         public static bool ValidateName(in string name) {
             if (name == null) throw new ArgumentNullException(nameof(name));
@@ -561,7 +561,7 @@ namespace BlackTundra.ModFramework {
             int failCount = 0;
             do {
                 validate = false;
-                foreach (Mod mod in ModDictionary.Values) { // iterate each loaded mod
+                foreach (ModInstance mod in ModDictionary.Values) { // iterate each loaded mod
                     if (!mod.Validate()) {
                         mod.Unregister(false);
                         validate = true;
@@ -582,7 +582,7 @@ namespace BlackTundra.ModFramework {
         /// Recalculates the order that mods should ideally be processed in.
         /// </summary>
         internal static void RecalculateModProcessingOrder() {
-            Mod[] mods = ModDictionary.Values.ToArray(); // convert mod dictionary to array
+            ModInstance[] mods = ModDictionary.Values.ToArray(); // convert mod dictionary to array
             mods.Sort((lhs, rhs) => rhs._processAfter.Contains(lhs.name) ? -1 : 1); // order array based off of process after array
             ModProcessingBuffer.Clear(mods); // reset buffer
         }
@@ -615,38 +615,38 @@ namespace BlackTundra.ModFramework {
         #region GetMod
 
         /// <returns>
-        /// Returns the loaded <see cref="Mod"/> with specified <paramref name="modName"/>.
+        /// Returns the loaded <see cref="ModInstance"/> with specified <paramref name="modName"/>.
         /// </returns>
         /// <exception cref="KeyNotFoundException">
-        /// Thrown if there is not a <see cref="Mod"/> with the specified <paramref name="modName"/> loaded into memory.
+        /// Thrown if there is not a <see cref="ModInstance"/> with the specified <paramref name="modName"/> loaded into memory.
         /// </exception>
-        public static Mod GetMod(in string modName) {
+        public static ModInstance GetMod(in string modName) {
             if (modName == null) throw new ArgumentNullException(nameof(modName));
             return GetMod(modName.ToLower().GetHashCode());
         }
 
         /// <returns>
-        /// Returns the loaded <see cref="Mod"/> with specified <paramref name="modId"/>.
+        /// Returns the loaded <see cref="ModInstance"/> with specified <paramref name="modId"/>.
         /// </returns>
         /// <exception cref="KeyNotFoundException">
-        /// Thrown if there is not a <see cref="Mod"/> with the specified <paramref name="modId"/> loaded into memory.
+        /// Thrown if there is not a <see cref="ModInstance"/> with the specified <paramref name="modId"/> loaded into memory.
         /// </exception>
-        public static Mod GetMod(in int modId) => ModDictionary.TryGetValue(modId, out Mod mod) ? mod : throw new KeyNotFoundException(modId.ToHex());
+        public static ModInstance GetMod(in int modId) => ModDictionary.TryGetValue(modId, out ModInstance mod) ? mod : throw new KeyNotFoundException(modId.ToHex());
 
         #endregion
 
         #region TryGetMod
 
         /// <returns>
-        /// Returns <c>true</c> if a <see cref="Mod"/> with the specified <paramref name="modName"/> was found; otherwise
+        /// Returns <c>true</c> if a <see cref="ModInstance"/> with the specified <paramref name="modName"/> was found; otherwise
         /// <c>false</c> is returned.
         /// </returns>
-        public static bool TryGetMod(in string modName, out Mod mod) {
+        public static bool TryGetMod(in string modName, out ModInstance mod) {
             if (modName == null) throw new ArgumentNullException(nameof(modName));
             return TryGetMod(modName.ToLower().GetHashCode(), out mod);
         }
 
-        public static bool TryGetMod(in int modId, out Mod mod) => ModDictionary.TryGetValue(modId, out mod);
+        public static bool TryGetMod(in int modId, out ModInstance mod) => ModDictionary.TryGetValue(modId, out mod);
 
         #endregion
 
@@ -675,7 +675,7 @@ namespace BlackTundra.ModFramework {
             if (modName == null) throw new ArgumentNullException(nameof(modName));
             if (assetPath == null) throw new ArgumentNullException(nameof(assetPath));
             int modId = GetModID(modName);
-            return ModDictionary.TryGetValue(GetModID(modName), out Mod mod) ? mod.GetAsset(assetPath) : throw new KeyNotFoundException(modName);
+            return ModDictionary.TryGetValue(GetModID(modName), out ModInstance mod) ? mod.GetAsset(assetPath) : throw new KeyNotFoundException(modName);
         }
 
         #endregion
@@ -691,7 +691,7 @@ namespace BlackTundra.ModFramework {
             if (modName == null) throw new ArgumentNullException(nameof(modName));
             if (assetPath == null) throw new ArgumentNullException(nameof(assetPath));
             int modId = GetModID(modName);
-            if (ModDictionary.TryGetValue(modId, out Mod mod)) {
+            if (ModDictionary.TryGetValue(modId, out ModInstance mod)) {
                 return mod.TryGetAsset(assetPath, out asset);
             } else {
                 asset = null;
@@ -701,7 +701,7 @@ namespace BlackTundra.ModFramework {
 
         public static bool TryGetAsset(in ulong assetGuid, out ModAsset asset) {
             int modId = GetModID(assetGuid);
-            if (ModDictionary.TryGetValue(modId, out Mod mod)) {
+            if (ModDictionary.TryGetValue(modId, out ModInstance mod)) {
                 return mod._assets.TryGetValue(assetGuid, out asset);
             } else {
                 asset = null;
@@ -776,7 +776,7 @@ namespace BlackTundra.ModFramework {
                         table[4, 0] = "Display Name";
                         table[5, 0] = "Dependency Count";
                         table[6, 0] = "Asset Count";
-                        Mod mod;
+                        ModInstance mod;
                         for (int i = 0; i < modCount;) {
                             mod = ModProcessingBuffer[i++];
                             table[0, i] = $"<color=#{Colour.DarkGray.hex}>{i:00}</color>";
@@ -799,7 +799,7 @@ namespace BlackTundra.ModFramework {
                             return false;
                         }
                         string modName = info.args[1];
-                        if (TryGetMod(modName, out Mod mod)) {
+                        if (TryGetMod(modName, out ModInstance mod)) {
                             string[,] table; int tableIndex;
                             // mod details:
                             table = new string[,] {
@@ -882,7 +882,7 @@ namespace BlackTundra.ModFramework {
                             return false;
                         }
                         string modName = info.args[1];
-                        if (TryGetMod(modName, out Mod mod)) {
+                        if (TryGetMod(modName, out ModInstance mod)) {
                             mod.Reload();
                             ConsoleWindow.Print("Reload complete.");
                             return true;
@@ -906,7 +906,7 @@ namespace BlackTundra.ModFramework {
                             return false;
                         }
                         string modName = info.args[1];
-                        if (TryGetMod(modName, out Mod mod)) {
+                        if (TryGetMod(modName, out ModInstance mod)) {
                             mod.Unload();
                             ConsoleWindow.Print("Unload complete.");
                             return true;
@@ -920,7 +920,7 @@ namespace BlackTundra.ModFramework {
                             ConsoleWindow.Print(ConsoleUtility.UnknownArgumentMessage(info.args, 1));
                             return false;
                         }
-                        Mod.UnloadAll();
+                        ModInstance.UnloadAll();
                         ConsoleWindow.Print("Unload complete.");
                         return true;
                     }

@@ -30,7 +30,7 @@ namespace BlackTundra.ModFramework {
         #region ReimportAll
 
         public static void ReimportAll() {
-            Mod.UnloadAll();
+            ModInstance.UnloadAll();
             ImportAll();
         }
 
@@ -58,28 +58,28 @@ namespace BlackTundra.ModFramework {
             // log total number of successful imports:
             ConsoleFormatter.Info($"Imported {importCount} mods.");
             // validate dependencies of imported mods:
-            Mod.ValidateDependencies();
+            ModInstance.ValidateDependencies();
             // recalculate mod processing order:
-            Mod.RecalculateModProcessingOrder();
+            ModInstance.RecalculateModProcessingOrder();
             // begin importing mod content:
-            Mod.ReloadAllAssets();
+            ModInstance.ReloadAllAssets();
         }
 
         #endregion
 
         #region TryImport
 
-        public static bool TryImport(in string name, out Mod mod) {
+        public static bool TryImport(in string name, out ModInstance mod) {
             if (name == null) throw new ArgumentNullException(nameof(name));
-            if (!Mod.ValidateName(name)) throw new ArgumentException("Invalid mod name.");
+            if (!ModInstance.ValidateName(name)) throw new ArgumentException("Invalid mod name.");
             return TryImport(GetModFSR(name), out mod);
         }
 
-        public static bool TryImport(in FileSystemReference fsr, out Mod mod) {
+        public static bool TryImport(in FileSystemReference fsr, out ModInstance mod) {
             if (fsr == null) throw new ArgumentNullException(nameof(fsr));
             if (!fsr.IsDirectory) throw new ArgumentException($"{nameof(fsr)} is not a directory.");
             try {
-                mod = new Mod(fsr);
+                mod = new ModInstance(fsr);
             } catch (Exception exception) {
                 ConsoleFormatter.Error($"Failed to import mod `{fsr.DirectoryName}`.", exception);
                 mod = null;
@@ -103,7 +103,7 @@ namespace BlackTundra.ModFramework {
         /// <param name="name">Name of the mod.</param>
         public static FileSystemReference GetModFSR(in string name) {
             if (name == null) throw new ArgumentNullException(nameof(name));
-            if (!Mod.ValidateName(name)) throw new ArgumentException("Invalid mod name.");
+            if (!ModInstance.ValidateName(name)) throw new ArgumentException("Invalid mod name.");
             return new FileSystemReference(
                 FileSystem.LocalModsDirectory + name + '/', // construct local mod directory path
                 true, // is local

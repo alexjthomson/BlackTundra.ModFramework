@@ -5,19 +5,19 @@ using Version = BlackTundra.Foundation.Version;
 namespace BlackTundra.ModFramework {
 
     /// <summary>
-    /// Describes a dependency for a <see cref="Mod"/>.
+    /// Describes a dependency for a <see cref="ModInstance"/>.
     /// </summary>
     public struct ModDependency {
 
         #region variable
 
         /// <summary>
-        /// Name of the <see cref="Mod"/>.
+        /// Name of the <see cref="ModInstance"/>.
         /// </summary>
         public readonly string name;
 
         /// <summary>
-        /// Version of the <see cref="Mod"/>.
+        /// Version of the <see cref="ModInstance"/>.
         /// </summary>
         public readonly Version version;
 
@@ -27,7 +27,7 @@ namespace BlackTundra.ModFramework {
 
         internal ModDependency(in string name, in Version version) {
             if (name == null) throw new ArgumentNullException(nameof(name));
-            if (!Mod.ValidateName(name)) throw new FormatException("Invalid dependency name.");
+            if (!ModInstance.ValidateName(name)) throw new FormatException("Invalid dependency name.");
             this.name = name;
             this.version = version;
         }

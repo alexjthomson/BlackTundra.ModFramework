@@ -13,9 +13,9 @@ namespace BlackTundra.ModFramework {
         #region variable
 
         /// <summary>
-        /// <see cref="Mod"/> that the <see cref="ModAsset"/> belongs to.
+        /// <see cref="ModInstance"/> that the <see cref="ModAsset"/> belongs to.
         /// </summary>
-        public readonly Mod mod;
+        public readonly ModInstance mod;
 
         /// <summary>
         /// <see cref="FileSystemReference"/> to the <see cref="ModAsset"/>.
@@ -54,10 +54,10 @@ namespace BlackTundra.ModFramework {
 
         private ModAsset() => throw new NotSupportedException();
 
-        /// <param name="mod"><see cref="Mod"/> that the <see cref="ModAsset"/> belongs to.</param>
+        /// <param name="mod"><see cref="ModInstance"/> that the <see cref="ModAsset"/> belongs to.</param>
         /// <param name="fsr"><see cref="FileSystemReference"/> to the <see cref="ModAsset"/> file location.</param>
         /// <param name="fsrNameStartIndex">Index to start the substring from in the <see cref="FileSystemReference"/> to find the <see cref="path"/>.</param>
-        internal ModAsset(in Mod mod, in FileSystemReference fsr, in int fsrNameStartIndex) {
+        internal ModAsset(in ModInstance mod, in FileSystemReference fsr, in int fsrNameStartIndex) {
             if (mod == null) throw new ArgumentNullException(nameof(mod));
             if (fsr == null) throw new ArgumentNullException(nameof(fsr));
             if (!fsr.IsFile) throw new ArgumentException($"{nameof(fsr)} must reference a file.");
@@ -65,7 +65,7 @@ namespace BlackTundra.ModFramework {
             this.fsr = fsr;
             string absolutePath = fsr.AbsolutePath;
             path = absolutePath[fsrNameStartIndex..];
-            guid = mod._guidIdentifier | ((ulong)path.ToLower().GetHashCode() & Mod.ModAssetGUIDMask);
+            guid = mod._guidIdentifier | ((ulong)path.ToLower().GetHashCode() & ModInstance.ModAssetGUIDMask);
             type = ImportUtility.ExtensionToAssetType(fsr.FileExtension);
             _asset = null;
         }
