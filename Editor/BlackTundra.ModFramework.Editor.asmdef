@@ -1,0 +1,18 @@
+{
+    "name": "BlackTundra.ModFramework.Editor",
+    "rootNamespace": "BlackTundra.ModFramework.Editor",
+    "references": [
+        "GUID:760f69485f198c54288595d3f76f42a7"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
