@@ -1,8 +1,8 @@
 using System;
 
-namespace BlackTundra.ModFramework {
+namespace BlackTundra.ModFramework.Utility {
 
-    public static class ModAssetTypeUtility {
+    public static class ImportUtility {
 
         /// <summary>
         /// Converts a file <paramref name="extension"/> to a <see cref="ModAssetType"/>.

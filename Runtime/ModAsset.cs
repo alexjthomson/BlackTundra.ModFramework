@@ -2,6 +2,7 @@ using BlackTundra.Foundation.IO;
 using BlackTundra.Foundation.Utility;
 using BlackTundra.ModFramework.Model;
 using BlackTundra.ModFramework.Prefab;
+using BlackTundra.ModFramework.Utility;
 
 using System;
 
@@ -65,7 +66,7 @@ namespace BlackTundra.ModFramework {
             string absolutePath = fsr.AbsolutePath;
             path = absolutePath[fsrNameStartIndex..];
             guid = mod._guidIdentifier | ((ulong)path.ToLower().GetHashCode() & Mod.ModAssetGUIDMask);
-            type = ModAssetTypeUtility.ExtensionToAssetType(fsr.FileExtension);
+            type = ImportUtility.ExtensionToAssetType(fsr.FileExtension);
             _asset = null;
         }
 
