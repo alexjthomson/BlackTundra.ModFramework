@@ -27,8 +27,48 @@ namespace BlackTundra.ModFramework.Utility {
             { typeof(int), (json, _) => (int)json },
             #endregion
 
+            #region uint
+            { typeof(uint), (json, _) => (uint)json },
+            #endregion
+
+            #region long
+            { typeof(long), (json, _) => (long)json },
+            #endregion
+
+            #region ulong
+            { typeof(ulong), (json, _) => (ulong)json },
+            #endregion
+
+            #region short
+            { typeof(short), (json, _) => (short)json },
+            #endregion
+
+            #region ushort
+            { typeof(ushort), (json, _) => (ushort)json },
+            #endregion
+
+            #region decimal
+            { typeof(decimal), (json, _) => (decimal)json },
+            #endregion
+
             #region float
             { typeof(float), (json, _) => (float)json },
+            #endregion
+
+            #region double
+            { typeof(double), (json, _) => (double)json },
+            #endregion
+
+            #region byte
+            { typeof(byte), (json, _) => (byte)json },
+            #endregion
+
+            #region sbyte
+            { typeof(sbyte), (json, _) => (sbyte)json },
+            #endregion
+
+            #region char
+            { typeof(char), (json, _) => (char)json },
             #endregion
 
             #region bool
@@ -108,6 +148,39 @@ namespace BlackTundra.ModFramework.Utility {
             #region PhysicMaterial
             { typeof(PhysicMaterial), (json, _) => {
                 throw new NotImplementedException();
+            }},
+            #endregion
+
+            #region Color
+            { typeof(Color), (json, _) => {
+                JArray jsonArray = (JArray)json;
+                return jsonArray.Count switch {
+                    3 => new Color(
+                        (float)jsonArray[0],
+                        (float)jsonArray[1],
+                        (float)jsonArray[2]
+                    ),
+                    4 => new Color(
+                        (float)jsonArray[0],
+                        (float)jsonArray[1],
+                        (float)jsonArray[2],
+                        (float)jsonArray[3]
+                    ),
+                    _ => throw new FormatException($"Invalid {nameof(Color)}.")
+                };
+            }},
+            #endregion
+
+            #region Color32
+            { typeof(Color32), (json, _) => {
+                JArray jsonArray = (JArray)json;
+                if (jsonArray.Count != 4) throw new FormatException($"Invalid {nameof(Color)}.");
+                return new Color32(
+                    (byte)jsonArray[0],
+                    (byte)jsonArray[1],
+                    (byte)jsonArray[2],
+                    (byte)jsonArray[3]
+                );
             }},
             #endregion
 
