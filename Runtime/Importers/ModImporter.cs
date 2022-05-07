@@ -22,19 +22,47 @@ namespace BlackTundra.ModFramework.Importers {
 
         [CoreInitialise(-100000)]
         private static void Initialise() {
+            ImportAll();
+        }
+
+        #endregion
+
+        #region ReimportAll
+
+        public static void ReimportAll() {
+            Mod.UnloadAll();
+            ImportAll();
+        }
+
+        #endregion
+
+        #region ImportAll
+
+        private static void ImportAll() {
+            // create file system reference to mods directory:
             FileSystemReference modsFsr = new FileSystemReference(FileSystem.LocalModsDirectory, true, true);
+            // find all subdirectories of the mods directory:
             FileSystemReference[] modDirectories = modsFsr.GetDirectories();
+            // estimate the number of mods by counting the subdirectories in the mods directory:
             int modCount = modDirectories.Length;
             if (modCount == 0) return; // no mods found
+            // log total number of mods identified:
             ConsoleFormatter.Info($"{modCount} mods identified.");
+            // try import each mod:
             FileSystemReference modFsr;
             int importCount = 0;
             for (int i = 0; i < modCount; i++) {
                 modFsr = modDirectories[i];
                 if (TryImport(modFsr, out _)) importCount++;
             }
+            // log total number of successful imports:
             ConsoleFormatter.Info($"Imported {importCount} mods.");
-            Mod.ValidateMods();
+            // validate dependencies of imported mods:
+            Mod.ValidateDependencies();
+            // recalculate mod processing order:
+            Mod.RecalculateModProcessingOrder();
+            // begin importing mod content:
+            Mod.ReloadAllAssets();
         }
 
         #endregion

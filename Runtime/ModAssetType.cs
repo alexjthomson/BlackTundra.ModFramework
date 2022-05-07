@@ -27,9 +27,9 @@ namespace BlackTundra.ModFramework {
         #region logic
 
         /// <summary>
-        /// <c>.cs</c> script.
+        /// <c>.dll</c> file.
         /// </summary>
-        ScriptCSharp = -1000,
+        Assembly = -1000,
 
         /// <summary>
         /// <c>.shader</c> script.

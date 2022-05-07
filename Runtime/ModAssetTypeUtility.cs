@@ -12,7 +12,7 @@ namespace BlackTundra.ModFramework {
             return extension.ToLower() switch {
                 "config" => ModAssetType.Config,
                 "bundle" => ModAssetType.AssetBundle,
-                "cs" => ModAssetType.ScriptCSharp,
+                "dll" => ModAssetType.Assembly,
                 "shader" => ModAssetType.ScriptShader,
                 "obj" => ModAssetType.ModelObj,
                 "fbx" => ModAssetType.ModelFbx,
