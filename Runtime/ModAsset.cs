@@ -1,7 +1,7 @@
 using BlackTundra.Foundation.IO;
 using BlackTundra.Foundation.Utility;
-using BlackTundra.ModFramework.Importers;
-using BlackTundra.ModFramework.Importers.Utility;
+using BlackTundra.ModFramework.Model;
+using BlackTundra.ModFramework.Prefab;
 
 using System;
 

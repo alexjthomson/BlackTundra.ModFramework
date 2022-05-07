@@ -1,5 +1,4 @@
 using BlackTundra.Foundation.Utility;
-using BlackTundra.ModFramework.Importers;
 using BlackTundra.ModFramework.Utility;
 
 using Newtonsoft.Json.Linq;
@@ -13,7 +12,7 @@ using UnityEngine;
 
 using Object = UnityEngine.Object;
 
-namespace BlackTundra.ModFramework.Prefabs {
+namespace BlackTundra.ModFramework.Prefab {
 
     public sealed class ModPrefab : IDisposable {
 

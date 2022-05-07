@@ -2,7 +2,6 @@ using BlackTundra.Foundation;
 using BlackTundra.Foundation.Collections.Generic;
 using BlackTundra.Foundation.IO;
 using BlackTundra.Foundation.Utility;
-using BlackTundra.ModFramework.Importers;
 
 using Newtonsoft.Json.Linq;
 

@@ -3,7 +3,7 @@ using BlackTundra.Foundation.IO;
 
 using System;
 
-namespace BlackTundra.ModFramework.Importers {
+namespace BlackTundra.ModFramework {
 
     /// <summary>
     /// Class responsible for importing mods at runtime.

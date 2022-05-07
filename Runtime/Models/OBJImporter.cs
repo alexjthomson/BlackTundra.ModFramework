@@ -1,7 +1,6 @@
 //#define ASSET_IMPORTER_OBJ_FAIL_ON_UNKNOWN_CMD
 
 using BlackTundra.Foundation.IO;
-using BlackTundra.ModFramework.Importers.Utility;
 
 using System;
 using System.Collections.Generic;
@@ -9,7 +8,7 @@ using System.IO;
 
 using UnityEngine;
 
-namespace BlackTundra.ModFramework.Importers {
+namespace BlackTundra.ModFramework.Model {
 
     public static class OBJImporter {
 

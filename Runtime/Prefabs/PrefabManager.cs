@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace BlackTundra.ModFramework.Prefabs {
+namespace BlackTundra.ModFramework.Prefab {
 
     public static class PrefabManager {
 

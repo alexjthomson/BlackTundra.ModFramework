@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace BlackTundra.ModFramework.Importers.Utility {
+namespace BlackTundra.ModFramework.Model {
 
     /// <summary>
     /// Utility used to build a mesh.

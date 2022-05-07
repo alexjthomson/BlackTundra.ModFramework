@@ -1,4 +1,4 @@
-namespace BlackTundra.ModFramework.Importers {
+namespace BlackTundra.ModFramework.Model {
 
     /// <summary>
     /// Stores basic data about a vertex.

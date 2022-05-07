@@ -1,13 +1,12 @@
 using BlackTundra.Foundation;
 using BlackTundra.Foundation.IO;
-using BlackTundra.ModFramework.Prefabs;
 
 using Newtonsoft.Json.Linq;
 
 using System;
 using System.IO;
 
-namespace BlackTundra.ModFramework.Importers {
+namespace BlackTundra.ModFramework.Prefab {
 
     public static class PrefabImporter {
 
