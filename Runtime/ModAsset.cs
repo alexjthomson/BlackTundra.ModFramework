@@ -1,5 +1,6 @@
 using BlackTundra.Foundation.IO;
 using BlackTundra.Foundation.Utility;
+using BlackTundra.ModFramework.Media;
 using BlackTundra.ModFramework.Model;
 using BlackTundra.ModFramework.Prefab;
 using BlackTundra.ModFramework.Utility;
@@ -81,10 +82,17 @@ namespace BlackTundra.ModFramework {
         /// </summary>
         internal void Import() {
             switch (type) {
-                case ModAssetType.ModelObj: {
-                    _asset = OBJImporter.Import(guid.ToHex(), fsr, MeshBuilderOptions.OptimizeMesh);
+                // audio:
+                case ModAssetType.MediaWav: {
+                    _asset = WavImporter.Import(guid.ToHex(), fsr);
                     break;
                 }
+                // model:
+                case ModAssetType.ModelObj: {
+                    _asset = ObjImporter.Import(guid.ToHex(), fsr, MeshBuilderOptions.OptimizeMesh);
+                    break;
+                }
+                // json:
                 case ModAssetType.JsonObj: {
                     _asset = PrefabImporter.Import(fsr);
                     break;

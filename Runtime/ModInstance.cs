@@ -860,7 +860,7 @@ namespace BlackTundra.ModFramework {
                             ConsoleWindow.Print(string.Empty);
                             ConsoleWindow.Print("<b>Mod Assets</b>");
                             ConsoleWindow.PrintTable(table, true);
-                            ConsoleWindow.Print($"<i>Total Assets: {dependencyCount}</i>");
+                            ConsoleWindow.Print($"<i>Total Assets: {assetCount}</i>");
                             // mod processing order:
                             int processAfterCount = mod._processAfter.Length;
                             if (processAfterCount > 0) {

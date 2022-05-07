@@ -4,63 +4,26 @@ namespace BlackTundra.ModFramework {
     /// Describes the type of an asset.
     /// </summary>
     public enum ModAssetType : int {
-
-        #region special
-
-        /// <summary>
-        /// <c>.config</c> file.
-        /// </summary>
-        Config = -1,
-
-        /// <summary>
-        /// No asset type (no extension).
-        /// </summary>
         None = 0,
+        // special:
+        Config = -1, // .config
+        AssetBundle = 1, // .bundle
 
-        /// <summary>
-        /// <c>.bundle</c> file.
-        /// </summary>
-        AssetBundle = 1,
-
-        #endregion
-
-        #region logic
-
-        /// <summary>
-        /// <c>.dll</c> file.
-        /// </summary>
-        Assembly = -1000,
-
-        /// <summary>
-        /// <c>.shader</c> script.
-        /// </summary>
+        // logic:
+        Assembly = -1000, // .dll
         ScriptShader = -1001,
 
-        #endregion
+        // audio:
+        MediaWav  = 1000,
+        MediaFlac = 1001,
+        MediaMP3  = 1002,
 
-        #region model
+        // model:
+        ModelObj = 2000,
+        ModelFbx = 2001,
 
-        /// <summary>
-        /// <c>.obj</c> file.
-        /// </summary>
-        ModelObj = 1000,
-
-        /// <summary>
-        /// <c>.fbx</c> file.
-        /// </summary>
-        ModelFbx = 1001,
-
-        #endregion
-
-        #region json
-
-        /// <summary>
-        /// <c>.json</c> file.
-        /// </summary>
+        // json:
         JsonObj = 10000,
-
-        #endregion
-
     }
 
 }

@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace BlackTundra.ModFramework.Model {
 
-    public static class OBJImporter {
+    public static class ObjImporter {
 
         public static Mesh Import(in string name, in FileSystemReference fsr, in MeshBuilderOptions options = 0) {
             if (name == null) throw new ArgumentNullException(nameof(name));
