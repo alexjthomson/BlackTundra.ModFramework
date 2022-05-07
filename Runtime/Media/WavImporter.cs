@@ -28,18 +28,19 @@ namespace BlackTundra.ModFramework.Media {
         private const float _8BitPerSampleCoefficient = 1.0f / 128.0f;
         private const float _16BitPerSampleCoefficient = 1.0f / 32768.0f;
         private const float _24BitPerSampleCoefficient = 1.0f / 8388608.0f;
+        private const float _32BitPerSampleCoefficient = 1.0f / 2147483648.0f;
 
         #endregion
 
         #region enum
-        
+
         /// <summary>
         /// Describes the format of some WAVE data.
         /// </summary>
         private enum WaveFormat : ushort {
             /// <summary>
             /// Short for `Pulse Code Modulation`, PCM is a method to capture waveforms and store the audio digitally. This
-            /// format simply means PCM data is the payload in the WAV data.
+            /// format simply means raw PCM data is the payload in the WAV data.
             /// </summary>
             PCM = 0x0001,
 
@@ -258,9 +259,7 @@ namespace BlackTundra.ModFramework.Media {
              * on the number of bits/bytes per sample:
              * BITS/SAMPLE      DESCRIPTION
              * 8                Stored as unsigned BYTEs ranging from 0 to 255.
-             * 16               Stored as signed SHORTs ranging from -32768 to 32767
-             * 24               Same as 16 bit but using 3 bytes
-             * 32               Stored as 32BIT FLOATING POINT VALUES
+             * 8+               Stored as signed BYTES (e.g. 16 bits is between -32768 and 32767).
              */
             int sampleCount = numSamples * numChannels;
             float[] samples = new float[sampleCount];
@@ -273,7 +272,7 @@ namespace BlackTundra.ModFramework.Media {
                             }
                             break;
                         }
-                        case 16: { // short
+                        case 16: { // signed short
                             int sampleIndex;
                             for (int i = 0; i < sampleCount; i++) {
                                 sampleIndex = sampleStartIndex + (i * 2);
@@ -289,24 +288,11 @@ namespace BlackTundra.ModFramework.Media {
                             }
                             break;
                         }
-                        case 32: { // 32bit signed floating point number (float)
-                            if (BitConverter.IsLittleEndian) {
-                                for (int i = 0; i < sampleCount; i++) {
-                                    samples[i] = BitConverter.ToSingle(bytes, sampleStartIndex + (i * 4));
-                                }
-                            } else {
-                                int sampleIndex;
-                                for (int i = 0; i < sampleCount; i++) {
-                                    sampleIndex = sampleStartIndex + (i * 4);
-                                    samples[i] = BitConverter.ToSingle(
-                                        BitConverter.GetBytes(
-                                            BinaryPrimitives.ReadUInt32BigEndian(
-                                                bytes[sampleIndex..(sampleIndex + 4)]
-                                            )
-                                        ),
-                                        0
-                                    );
-                                }
+                        case 32: { // signed int
+                            int sampleIndex;
+                            for (int i = 0; i < sampleCount; i++) {
+                                sampleIndex = sampleStartIndex + (i * 4);
+                                samples[i] = BinaryPrimitives.ReadInt32LittleEndian(bytes[sampleIndex..(sampleIndex + 4)]) * _32BitPerSampleCoefficient;
                             }
                             break;
                         }
