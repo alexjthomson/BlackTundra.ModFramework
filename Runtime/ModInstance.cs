@@ -652,11 +652,21 @@ namespace BlackTundra.ModFramework {
 
         #region GetAssetGUID
 
-        public ulong GetAssetGUID(in string assetPath) => _guidIdentifier | ((ulong)assetPath.GetHashCode() & ModAssetGUIDMask);
+        public ulong GetAssetGUID(in string assetPath) {
+            if (assetPath == null) throw new ArgumentNullException(nameof(assetPath));
+            return _guidIdentifier | ((ulong)assetPath.ToLower().GetHashCode() & ModAssetGUIDMask);
+        }
 
-        public static ulong GetAssetGUID(in int modId, in string assetPath) => (((ulong)modId & ModAssetGUIDMask) << 32) | ((ulong)assetPath.GetHashCode() & ModAssetGUIDMask);
+        public static ulong GetAssetGUID(in int modId, in string assetPath) {
+            if (assetPath == null) throw new ArgumentNullException(nameof(assetPath));
+            return (((ulong)modId & ModAssetGUIDMask) << 32) | ((ulong)assetPath.GetHashCode() & ModAssetGUIDMask);
+        }
 
-        public static ulong GetAssetGUID(in string modName, in string assetPath) => (((ulong)modName.ToLower().GetHashCode() & ModAssetGUIDMask) << 32) | ((ulong)assetPath.GetHashCode() & ModAssetGUIDMask);
+        public static ulong GetAssetGUID(in string modName, in string assetPath) {
+            if (modName == null) throw new ArgumentNullException(nameof(modName));
+            if (assetPath == null) throw new ArgumentNullException(nameof(assetPath));
+            return (((ulong)modName.ToLower().GetHashCode() & ModAssetGUIDMask) << 32) | ((ulong)assetPath.GetHashCode() & ModAssetGUIDMask);
+        }
 
         #endregion
 

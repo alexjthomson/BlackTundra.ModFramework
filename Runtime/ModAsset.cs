@@ -82,6 +82,16 @@ namespace BlackTundra.ModFramework {
         /// </summary>
         internal void Import() {
             switch (type) {
+                // media:
+                case ModAssetType.MediaPng:
+                case ModAssetType.MediaBmp:
+                case ModAssetType.MediaTif:
+                case ModAssetType.MediaTga:
+                case ModAssetType.MediaPsd:
+                case ModAssetType.MediaJpg: {
+                    _asset = ImageImporter.Import(guid.ToHex(), fsr);
+                    break;
+                }
                 // audio:
                 case ModAssetType.MediaWav: {
                     _asset = WavImporter.Import(guid.ToHex(), fsr);

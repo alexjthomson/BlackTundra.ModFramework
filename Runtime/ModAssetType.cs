@@ -4,26 +4,35 @@ namespace BlackTundra.ModFramework {
     /// Describes the type of an asset.
     /// </summary>
     public enum ModAssetType : int {
-        None = 0,
+        None            = 0,
+
         // special:
-        Config = -1, // .config
-        AssetBundle = 1, // .bundle
+        Config          = -1, // .config
+        AssetBundle     = 1, // .bundle
 
         // logic:
-        Assembly = -1000, // .dll
-        ScriptShader = -1001,
+        Assembly        = -1000, // .dll
+        ScriptShader    = -1001,
+
+        // image:
+        MediaPng        = 1000,
+        MediaBmp        = 1001,
+        MediaTif        = 1002,
+        MediaTga        = 1003,
+        MediaPsd        = 1004,
+        MediaJpg        = 1005,
 
         // audio:
-        MediaWav  = 1000,
-        MediaFlac = 1001,
-        MediaMP3  = 1002,
+        MediaWav        = 2000,
+        MediaFlac       = 2001,
+        MediaMP3        = 2002,
 
         // model:
-        ModelObj = 2000,
-        ModelFbx = 2001,
+        ModelObj        = 3000,
+        ModelFbx        = 3001,
 
         // json:
-        JsonObj = 10000,
+        JsonObj         = 10000,
     }
 
 }

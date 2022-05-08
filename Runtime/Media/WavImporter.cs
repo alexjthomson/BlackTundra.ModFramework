@@ -72,11 +72,17 @@ namespace BlackTundra.ModFramework.Media {
             if (name == null) throw new ArgumentNullException(nameof(name));
             if (fsr == null) throw new ArgumentNullException(nameof(fsr));
             if (!fsr.IsFile) throw new ArgumentException($"{nameof(fsr)} must reference a file.");
-
-            // read wav data:
+            // read data:
             if (!FileSystem.Read(fsr, out byte[] bytes, FileFormat.Standard)) {
                 throw new IOException($"Failed to read wav file at `{fsr}`.");
             }
+            // import data:
+            return Import(name, bytes);
+        }
+
+        public static AudioClip Import(in string name, in byte[] bytes) {
+            if (name == null) throw new ArgumentNullException(nameof(name));
+            if (bytes == null) throw new ArgumentNullException(nameof(bytes));
 
             /*
              * TODO:
@@ -337,7 +343,6 @@ namespace BlackTundra.ModFramework.Media {
                         audioClip.SetData(samples, 0);
 
                         // return audio clip:
-                        Debug.Log($"success: {audioFormat} {name} {fsr.FileName}");
                         return audioClip;
                     }
                 }

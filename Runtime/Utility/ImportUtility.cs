@@ -16,6 +16,13 @@ namespace BlackTundra.ModFramework.Utility {
                 // logic:
                 "dll" => ModAssetType.Assembly,
                 "shader" => ModAssetType.ScriptShader,
+                // image:
+                "png" => ModAssetType.MediaPng,
+                "bmp" => ModAssetType.MediaBmp,
+                "tif" or "tiff" => ModAssetType.MediaTif,
+                "tga" => ModAssetType.MediaTga,
+                "psd" => ModAssetType.MediaPsd,
+                "jpg" or "jpeg" => ModAssetType.MediaJpg,
                 // audio:
                 "wav" => ModAssetType.MediaWav,
                 "flac" => ModAssetType.MediaFlac,
