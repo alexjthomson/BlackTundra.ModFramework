@@ -28,18 +28,25 @@ namespace BlackTundra.ModFramework.Prefab {
 
         #region Import
 
-        internal static ModPrefab Import(in FileSystemReference fsr) {
+        public static ModPrefab Import(in string name, in FileSystemReference fsr) {
+            if (name == null) throw new ArgumentNullException(nameof(name));
             if (fsr == null) throw new ArgumentNullException(nameof(fsr));
             if (!fsr.IsFile) throw new ArgumentException($"{nameof(fsr)} is not referencing a file.");
             if (!FileSystem.Read(fsr, out string jsonString, FileFormat.Standard)) throw new IOException($"Failed to read prefab JSON file at `{fsr}`.");
             // read json:
             JObject json = JObject.Parse(jsonString);
             // create prefab:
+            return Import(name, json);
+        }
+
+        public static ModPrefab Import(in string name, JObject json) {
+            if (name == null) throw new ArgumentNullException(nameof(name));
+            if (json == null) throw new ArgumentNullException(nameof(json));
             try {
                 return new ModPrefab(json);
             } catch (Exception exception) {
                 ConsoleFormatter.Error(
-                    $"Failed to import prefab at `{fsr}`.",
+                    $"Failed to import prefab `{name}`.",
                     exception
                 );
                 return null;

@@ -6,7 +6,6 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Text.RegularExpressions;
 
 using UnityEngine;
 
@@ -16,26 +15,7 @@ namespace BlackTundra.ModFramework.Prefab {
 
     public sealed class ModPrefab : IDisposable {
 
-        #region constant
-
-        /// <summary>
-        /// Regex pattern used to validate <see cref="ModPrefab"/> names.
-        /// </summary>
-        public const string NamePattern = @"[a-z0-9\-_\. ]+";
-
-        /// <summary>
-        /// Compiled <see cref="Regex"/> matcher to validate <see cref="ModPrefab"/> names.
-        /// </summary>
-        public static readonly Regex NameRegex = new Regex(NamePattern, RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
-
-        #endregion
-
         #region variable
-
-        /// <summary>
-        /// Name of the <see cref="ModPrefab"/>.
-        /// </summary>
-        public readonly string name;
 
         /// <summary>
         /// Reference to the cached <see cref="GameObject"/> to use as the <see cref="ModPrefab"/> <see cref="GameObject"/>.
@@ -48,14 +28,7 @@ namespace BlackTundra.ModFramework.Prefab {
 
         internal ModPrefab(in JObject json) {
             if (json == null) throw new ArgumentNullException(nameof(json));
-            // assign name:
-            name = (string)json["name"];
-            if (!ModPrefab.NameRegex.IsMatch(name)) throw new FormatException($"Invalid prefab name `{name}`.");
-            // assign prefab:
-            prefab = ProcessObject(
-                (JObject)json["object"],
-                PrefabManager.CacheTransform
-            );
+            prefab = ProcessObject(json, PrefabManager.CacheTransform);
         }
 
         #endregion
@@ -121,7 +94,7 @@ namespace BlackTundra.ModFramework.Prefab {
                 tag = "Untagged";
             }
             // get object static:
-            bool isStatic = json.TryGetValue("static", StringComparison.OrdinalIgnoreCase, out JToken staticJson) ? (bool)staticJson : false;
+            bool isStatic = json.TryGetValue("static", StringComparison.OrdinalIgnoreCase, out JToken staticJson) && (bool)staticJson;
             // find components:
             int componentCount;
             JObject[] jsonComponents;
@@ -170,7 +143,7 @@ namespace BlackTundra.ModFramework.Prefab {
                     } while (currentType != targetType && ++componentIndex < components.Length);
                     if (currentType != targetType) { // target component type not found, this must mean the target component was not added to the object; stop here
                         PrefabImporter.ConsoleFormatter.Warning(
-                            $"Failed to find component of type `{targetType}` on object `{name}` on prefab `{this.name}`."
+                            $"Failed to find component of type `{targetType}` on object `{name}`."
                         );
                         break;
                     }
@@ -188,13 +161,13 @@ namespace BlackTundra.ModFramework.Prefab {
                             PropertyInfo propertyInfo = targetType.GetProperty(propertyName); // search for the property
                             if (propertyInfo == null) { // no property found
                                 PrefabImporter.ConsoleFormatter.Warning(
-                                    $"Failed to find property `{propertyName}` on component `{targetType}` on object `{name}` on prefab `{this.name}`."
+                                    $"Failed to find property `{propertyName}` on component `{targetType}` on object `{name}`."
                                 );
                                 continue; // ignore this property
                             }
                             if (!propertyInfo.CanWrite) { // cannot write to property
                                 PrefabImporter.ConsoleFormatter.Warning(
-                                    $"Cannot write to property `{propertyName}` on component `{targetType}` on object `{name}` on prefab `{this.name}`."
+                                    $"Cannot write to property `{propertyName}` on component `{targetType}` on object `{name}`."
                                 );
                                 continue; // ignore this property
                             }
@@ -206,14 +179,14 @@ namespace BlackTundra.ModFramework.Prefab {
                                     propertyInfo.SetValue(component, value);
                                 } catch (Exception exception) {
                                     PrefabImporter.ConsoleFormatter.Error(
-                                        $"Failed to write to property `{propertyName}` on component `{targetType}` on object `{name}` on prefab `{this.name}`.",
+                                        $"Failed to write to property `{propertyName}` on component `{targetType}` on object `{name}`.",
                                         exception
                                     );
                                     continue; // ignore this property
                                 }
                             } else {
                                 PrefabImporter.ConsoleFormatter.Warning(
-                                    $"Unsupported property type `{propertyType}` for property `{propertyName}` on component `{targetType}` on object `{name}` on prefab `{this.name}`."
+                                    $"Unsupported property type `{propertyType}` for property `{propertyName}` on component `{targetType}` on object `{name}`."
                                 );
                                 continue; // ignore this property
                             }

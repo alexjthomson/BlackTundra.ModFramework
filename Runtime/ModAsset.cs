@@ -104,7 +104,7 @@ namespace BlackTundra.ModFramework {
                 }
                 // json:
                 case ModAssetType.JsonObj: {
-                    _asset = PrefabImporter.Import(fsr);
+                    _asset = PrefabImporter.Import(guid.ToHex(), fsr);
                     break;
                 }
                 default: {
