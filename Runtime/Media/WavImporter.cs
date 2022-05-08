@@ -21,9 +21,6 @@ namespace BlackTundra.ModFramework.Media {
 
         private static readonly byte[] RIFF_HeaderChunkID = Encoding.GetBytes("RIFF");
         private static readonly byte[] RIFF_HeaderExpectedFileType = Encoding.GetBytes("WAVE");
-        private static readonly byte[] FMT__SubchunkID = Encoding.GetBytes("fmt ");
-        private static readonly byte[] FACT_SubchunkID = Encoding.GetBytes("fact");
-        private static readonly byte[] DATA_SubchunkID = Encoding.GetBytes("data");
 
         private const float _8BitPerSampleCoefficient = 1.0f / 128.0f;
         private const float _16BitPerSampleCoefficient = 1.0f / 32768.0f;
@@ -37,7 +34,12 @@ namespace BlackTundra.ModFramework.Media {
         /// <summary>
         /// Describes the format of some WAVE data.
         /// </summary>
-        private enum WaveFormat : ushort {
+        private enum WaveAudioFormat : ushort {
+            /// <summary>
+            /// Unknown format, used as a placeholder.
+            /// </summary>
+            Unknown = 0x0000,
+
             /// <summary>
             /// Short for `Pulse Code Modulation`, PCM is a method to capture waveforms and store the audio digitally. This
             /// format simply means raw PCM data is the payload in the WAV data.
@@ -78,11 +80,6 @@ namespace BlackTundra.ModFramework.Media {
 
             /*
              * TODO:
-             * - Add dynamic sub-chunk ordering (allow the sub-chunks to appear in any order)
-             * - Add support for ignoring unrecognized chunks (such as `JUNK`) and ignoring and moving onto the
-             *   next chunk.
-             * - Review & tidy up audio data processing switch statements. There is a chance I'm converting the
-             *   integers into floats wrong since I didn't research how the conversion should be done.
              * - Finish implementing the EXTENSIBLE format by adding it to the final switch statement where the
              *   audio payload is processed.
              */
@@ -104,259 +101,251 @@ namespace BlackTundra.ModFramework.Media {
 
             // ChunkSize:
             uint chunkSize = BinaryPrimitives.ReadUInt32LittleEndian(bytes[4..8]);
-            // The ChunkSize is verified later using the equation in the above ChunkSize definition
+            int dataSize = (int)(chunkSize + 8);
 
             // Format:
             if (!bytes.ContentEquals(8, RIFF_HeaderExpectedFileType, 0, 4)) throw new FormatException("Invalid RIFF header format field.");
 
             /*
-             * ------------------------------------------------- FMT_ SUBCHUNK -------------------------------------------------
-             * This sub-chunk describes the sound data's format:
-             * 12   4   Subchunk1ID     Contains the letters "RIFF" in big endian ASCII format
-             * 16   4   Subchunk1Size   16 for PCM
-             * 20   2   AudioFormat     PCM = 1 (i.e. linear quantization). Values other than 1 indicate some form of compression
-             * 22   2   NumChannels     Mono = 1, Stereo = 2, etc.
-             * 24   4   SampleRate      8000, 44100, etc.
-             * 28   4   ByteRate        == SampleRate * NumChannels * BitsPerSample/8
-             * 32   2   BlockAlign      == NumChannels * BitsPerSample/8
-             *                          The number of bytes for one sample including all channels.
-             * 34   2   BitsPerSample   8 bits = 8, 16 bits = 16, etc.
-             *      2   ExtraParamSize  if PCM then this does not exist
-             *      x   ExtraParams     Space for extra parameters
+             * ------------------------------------------------ PARSE SUBCHUNKS ------------------------------------------------
+             * Subchunks exist within the RIFF chunk. These chunks contain useful meta-data about the WAVE data. These
+             * sub-chunks may appear in any order. There may also be propritary sub-chunks depending on the software used to
+             * produce the WAVE data.
              */
 
-            // Subchunk1ID:
-            if (!bytes.ContentEquals(12, FMT__SubchunkID, 0, 4)) throw new FormatException("Invalid FMT_ subchunk ChunkID.");
+            int offset = 12; // create offset to use to track the current position in the byte array
+            bool containsFormatSubchunk = false;
+            bool containsFactSubchunk = false;
 
-            // Subchunk1Size:
-            uint subchunk1Size = BinaryPrimitives.ReadUInt32LittleEndian(bytes[16..20]);
+            WaveAudioFormat audioFormat = WaveAudioFormat.Unknown;
+            ushort numChannels = 0;
+            int sampleRate = -1;
+            ushort blockAlign = 0;
+            ushort bitsPerSample = 0;
+            int numSamples = 0;
 
-            // AudioFormat:
-            ushort audioFormatCode = BinaryPrimitives.ReadUInt16LittleEndian(bytes[20..22]);
-            if (!((ushort[])Enum.GetValues(typeof(WaveFormat))).Contains(audioFormatCode)) {
-                throw new NotSupportedException($"Unsupported FMT_ subchunk WAVE format `{audioFormatCode}`.");
-            }
-            WaveFormat audioFormat = (WaveFormat)audioFormatCode;
-            if (audioFormat == WaveFormat.ALAW || audioFormat == WaveFormat.MULAW) throw new NotSupportedException($"WAVE format `{audioFormat}` not supported.");
+            // begin parsing sub-chunks:
+            while (offset < dataSize) {
+                // get sub-chunk id:
+                string subchunkId = Encoding.GetString(bytes[offset..(offset + 4)]);
 
-            // NumChannels:
-            ushort numChannels = BinaryPrimitives.ReadUInt16LittleEndian(bytes[22..24]);
-            if (numChannels == 0) throw new FormatException("Invalid FMT_ subchunk NumChannels is zero.");
+                // get sub-chunk size:
+                uint subchunkSize = BinaryPrimitives.ReadUInt32LittleEndian(bytes[(offset + 4)..(offset + 8)]);
 
-            // SampleRate:
-            int sampleRate = (int)BinaryPrimitives.ReadUInt32LittleEndian(bytes[24..28]);
+                // process sub-chunk:
+                switch (subchunkId) {
+                    case "fmt ": { // format sub-chunk
+                        /*
+                         * ------------------------------------------------- FMT_ SUBCHUNK -------------------------------------------------
+                         * This sub-chunk describes the sound data's format:
+                         * 0    4   Subchunk1ID     Contains the letters "fmt " in big endian ASCII format
+                         * 4    4   Subchunk1Size   16 for PCM
+                         * 8    2   AudioFormat     PCM = 1 (i.e. linear quantization). Values other than 1 indicate some form of compression
+                         * 10   2   NumChannels     Mono = 1, Stereo = 2, etc.
+                         * 12   4   SampleRate      8000, 44100, etc.
+                         * 16   4   ByteRate        == SampleRate * NumChannels * BitsPerSample/8
+                         * 20   2   BlockAlign      == NumChannels * BitsPerSample/8
+                         *                          The number of bytes for one sample including all channels.
+                         * 22   2   BitsPerSample   8 bits = 8, 16 bits = 16, etc.
+                         * 24   2   ExtraParamSize  if PCM then this does not exist
+                         * 26   x   ExtraParams     Space for extra parameters
+                         */
+                        containsFormatSubchunk = true;
 
-            // ByteRate:
-            uint byteRate = BinaryPrimitives.ReadUInt32LittleEndian(bytes[28..32]);
-
-            // BlockAlign:
-            ushort blockAlign = BinaryPrimitives.ReadUInt16LittleEndian(bytes[32..34]);
-
-            // BitsPerSample:
-            ushort bitsPerSample = BinaryPrimitives.ReadUInt16LittleEndian(bytes[34..36]);
-            ushort bytesPerSample = (ushort)(bitsPerSample / 8); // calculate the number of bytes per sample
-
-            // Verify BlockAlign:
-            ushort expectedBlockAlign = (ushort)(numChannels * bytesPerSample);
-            if (blockAlign != expectedBlockAlign) throw new FormatException("Unexpected FMT_ subchunk BlockAlign value.");
-
-            // Verify ByteRate:
-            int expectedByteRate = sampleRate * expectedBlockAlign;
-            if (byteRate != expectedByteRate) throw new FormatException("Unexpected FMT_ subchunk ByteRate value.");
-
-            /*
-             * This is the end of the FMT_ subchunk. Some applications may place additional data at the end of this
-             * sub-chunk. Here we are checking to see if there is any additional data since the expected length of
-             * this sub-chunk is 16 and we are given the actual size of the sub-chunk already. We can find the
-             * difference to calculate the number of additional bytes of data at the end of this sub-chunk that can
-             * be discarded as additional data.
-             */
-            int chunkOffset = (int)(subchunk1Size - 16);
-
-            // Create NumSamples (this is defined in the FACT sub-chunk but can otherwise be calculated later):
-            int numSamples = -1;
-
-            // FACT sub-chunk:
-            if (audioFormat == WaveFormat.EXTENSIBLE) {
-                /*
-                 * ------------------------------------------------- FACT SUBCHUNK -------------------------------------------------
-                 * All (compressed) non-PCM formats must have a FACT chunk. The chunk contains at least one value: the number of
-                 * samples in the file.
-                 * Let X = the additional offset from previous chunks:
-                 * 36+X 4   Subchunk3ID     Contains the letters "fact" in big endian ASCII format
-                 * 40+X 4   Subchunk3Size   Number of bytes of data in this chunk.
-                 * 44+X 4   NumSamples      Number of samples (per channel)
-                 * 48+X *                   Misc data.
-                 */
-
-                /*
-                 * We should now check for the presence of the FACT sub-chunk. If the ChunkID is not present we should not throw a
-                 * FormatException; instead, we should just move on and assume the FACT sub-chunk is not included in the file. In the
-                 * case that the FACT sub-chunk is not included, the next expected chunk is the DATA chunk.
-                 */
-                if (bytes.ContentEquals(36 + chunkOffset, FACT_SubchunkID, 0, 4)) { // Subchunk3ID:
-                    // Subchunk3Size:
-                    int subchunk3Size = (int)BinaryPrimitives.ReadUInt32LittleEndian(bytes[(44 + chunkOffset)..(48 + chunkOffset)]);
-
-                    // NumSamples:
-                    numSamples = (int)BinaryPrimitives.ReadUInt32LittleEndian(bytes[(44 + chunkOffset)..(48 + chunkOffset)]);
-
-                    /*
-                     * Here we can calculate the amount of additional data in this subchunk that can be ignored and add it onto the
-                     * chunk offset:
-                     * 
-                     * Since we know the expected size of the current chunk (4) and the actual size, we can find the number of extra
-                     * bytes and add this to the chunk offset:
-                     */
-                    chunkOffset += subchunk3Size - 4;
-                }
-            }
-
-            /*
-             * ------------------------------------------------- DATA SUBCHUNK -------------------------------------------------
-             * This sub-chunk contains the size of the data and the actual audio:
-             * Let X = the additional offset from previous chunks:
-             * 36+X 4   Subchunk2ID     Contains the letters "data" in big endian ASCII format
-             * 40+X 4   Subchunk2Size   == NumSamples * NumChannels * BitsPerSample/8
-             *                          This is the number of bytes in the data. You can also think of this as the size of the
-             *                          read of the subchunk following this number.
-             * 44+X *   Data            The actual sound data.
-             */
-
-            /*
-             * Here we can calculate the start index for the samples of actual audio based off of the offset from the previous chunk(s):
-             */
-            int sampleStartIndex = 44 + chunkOffset;
-
-            // Subchunk2ID:
-            if (!bytes.ContentEquals(36 + chunkOffset, DATA_SubchunkID, 0, 4)) throw new FormatException("Invalid DATA subchunk ChunkID.");
-
-            // Subchunk2Size:
-            uint subchunk2Size = BinaryPrimitives.ReadUInt32LittleEndian(bytes[(40 + chunkOffset)..sampleStartIndex]);
-
-            /*
-             * Here we can verify the ChunkSize. We cannot calculate the exact value for certain since there may be additional data or padding after
-             * the audio data; however, this does mean we can at least calculate a minimum value:
-             */
-            uint minimumChunkSize = 4 + (8 + subchunk1Size) + (8 + subchunk2Size);
-            //Debug.Log($"{fsr.FileName} {(chunkSize - minimumChunkSize)} {audioFormat} 1:{subchunk1Size} 2:{subchunk2Size} additional space: {chunkOffset}");
-            if (chunkSize < minimumChunkSize) throw new FormatException($"Unexpected RIFF header ChunkSize (actual: `{chunkSize}`, expected_minimum: `{minimumChunkSize}`).");
-
-            if (numSamples == -1) { // the number of samples still has not been calculated
-                /*
-                 * Here we can calculate the number of samples from the Subchunk2Size:
-                 * Since the Subchunk2Size is equal to `NumSamples * NumChannels * BitsPerSample/8` we can reverse engineer this to
-                 * find NumSamples:
-                 * 
-                 * Subchunk2Size / (NumChannels * BitsPerSample/8) == NumSamples
-                 */
-                numSamples = (int)(subchunk2Size / blockAlign);
-            }
-
-            /*
-             * ----------------------------------------------- AudioClip Samples -----------------------------------------------
-             * The next Subchunk2Size number of bytes are all audio data. This data is formatted slightly differently depending
-             * on the number of bits/bytes per sample:
-             * BITS/SAMPLE      DESCRIPTION
-             * 8                Stored as unsigned BYTEs ranging from 0 to 255.
-             * 8+               Stored as signed BYTES (e.g. 16 bits is between -32768 and 32767).
-             */
-            int sampleCount = numSamples * numChannels;
-            float[] samples = new float[sampleCount];
-            switch (audioFormat) {
-                case WaveFormat.PCM: {
-                    switch (bitsPerSample) {
-                        case 8: { // ubyte
-                            for (int i = 0; i < sampleCount; i++) { // iterate each sample
-                                samples[i] = (bytes[sampleStartIndex + i] - 128) * _8BitPerSampleCoefficient;
-                            }
-                            break;
+                        // AudioFormat:
+                        ushort audioFormatCode = BinaryPrimitives.ReadUInt16LittleEndian(bytes[(offset + 8)..(offset + 10)]);
+                        if (!((ushort[])Enum.GetValues(typeof(WaveAudioFormat))).Contains(audioFormatCode)) {
+                            throw new NotSupportedException($"Unsupported FMT_ subchunk WAVE format `{audioFormatCode}`.");
                         }
-                        case 16: { // signed short
-                            int sampleIndex;
-                            for (int i = 0; i < sampleCount; i++) {
-                                sampleIndex = sampleStartIndex + (i * 2);
-                                samples[i] = BinaryPrimitives.ReadInt16LittleEndian(bytes[sampleIndex..(sampleIndex + 2)]) * _16BitPerSampleCoefficient;
-                            }
-                            break;
-                        }
-                        case 24: { // 3 signed bytes
-                            int sampleIndex;
-                            for (int i = 0; i < sampleCount; i++) {
-                                sampleIndex = sampleStartIndex + (i * 3);
-                                samples[i] = ((bytes[sampleIndex + 2] << 24 | bytes[sampleIndex + 1] << 16 | bytes[sampleIndex] << 8) >> 8) * _24BitPerSampleCoefficient;
-                            }
-                            break;
-                        }
-                        case 32: { // signed int
-                            int sampleIndex;
-                            for (int i = 0; i < sampleCount; i++) {
-                                sampleIndex = sampleStartIndex + (i * 4);
-                                samples[i] = BinaryPrimitives.ReadInt32LittleEndian(bytes[sampleIndex..(sampleIndex + 4)]) * _32BitPerSampleCoefficient;
-                            }
-                            break;
-                        }
-                        default: throw new NotSupportedException($"{bitsPerSample} bits per sample is not supported for WAVE format imports.");
+                        audioFormat = (WaveAudioFormat)audioFormatCode;
+                        if (audioFormat == WaveAudioFormat.Unknown
+                            || audioFormat == WaveAudioFormat.ALAW
+                            || audioFormat == WaveAudioFormat.MULAW
+                        ) throw new NotSupportedException($"WAVE format `{audioFormat}` not supported.");
+
+                        // NumChannels:
+                        numChannels = BinaryPrimitives.ReadUInt16LittleEndian(bytes[(offset + 10)..(offset + 12)]);
+                        if (numChannels == 0) throw new FormatException("Invalid FMT_ subchunk NumChannels is zero.");
+
+                        // SampleRate:
+                        sampleRate = (int)BinaryPrimitives.ReadUInt32LittleEndian(bytes[(offset + 12)..(offset + 16)]);
+
+                        // ByteRate:
+                        uint byteRate = BinaryPrimitives.ReadUInt32LittleEndian(bytes[(offset + 16)..(offset + 20)]);
+
+                        // BlockAlign:
+                        blockAlign = BinaryPrimitives.ReadUInt16LittleEndian(bytes[(offset + 20)..(offset + 22)]);
+
+                        // BitsPerSample:
+                        bitsPerSample = BinaryPrimitives.ReadUInt16LittleEndian(bytes[(offset + 22)..(offset + 24)]);
+
+                        // Verify ByteRate:
+                        int expectedByteRate = sampleRate * blockAlign;
+                        if (byteRate != expectedByteRate) throw new FormatException("Unexpected FMT_ subchunk ByteRate value.");
+
+                        /*
+                         * This is the end of the FMT_ subchunk. Some applications may place additional data at the end of this
+                         * sub-chunk.
+                         */
+                        break;
                     }
-                    break;
-                }
-                case WaveFormat.IEEE_FLOAT: {
-                    switch (bitsPerSample) {
-                        case 32: { // 32bit signed floating point number (float)
-                            if (BitConverter.IsLittleEndian) {
-                                for (int i = 0; i < sampleCount; i++) {
-                                    samples[i] = BitConverter.ToSingle(bytes, sampleStartIndex + (i * 4));
-                                }
-                            } else {
-                                int sampleIndex;
-                                for (int i = 0; i < sampleCount; i++) {
-                                    sampleIndex = sampleStartIndex + (i * 4);
-                                    samples[i] = BitConverter.ToSingle(
-                                        BitConverter.GetBytes(
-                                            BinaryPrimitives.ReadUInt32BigEndian(
-                                                bytes[sampleIndex..(sampleIndex + 4)]
-                                            )
-                                        ),
-                                        0
-                                    );
-                                }
-                            }
-                            break;
-                        }
-                        case 64: { // 64bit signed floating point number (double)
-                            if (BitConverter.IsLittleEndian) {
-                                for (int i = 0; i < sampleCount; i++) {
-                                    samples[i] = (float)BitConverter.ToDouble(bytes, sampleStartIndex + (i * 4));
-                                }
-                            } else {
-                                int sampleIndex;
-                                for (int i = 0; i < sampleCount; i++) {
-                                    sampleIndex = sampleStartIndex + (i * 8);
-                                    samples[i] = (float)BitConverter.ToDouble(
-                                        BitConverter.GetBytes(
-                                            BinaryPrimitives.ReadUInt64BigEndian(
-                                                bytes[sampleIndex..(sampleIndex + 8)]
-                                            )
-                                        ),
-                                        0
-                                    );
-                                }
-                            }
-                            break;
-                        }
-                        default: throw new NotSupportedException($"{bitsPerSample} bits per sample is not supported for WAVE format imports.");
+                    case "fact": { // fact sub-chunk
+                        /*
+                         * ------------------------------------------------- FACT SUBCHUNK -------------------------------------------------
+                         * All (compressed) non-PCM formats must have a FACT chunk. The chunk contains at least one value: the number of
+                         * samples in the file.
+                         * 0    4   Subchunk3ID     Contains the letters "fact" in big endian ASCII format
+                         * 4    4   Subchunk3Size   Number of bytes of data in this chunk.
+                         * 8    4   NumSamples      Number of samples (per channel)
+                         * 12   *                   Misc data.
+                         */
+                        containsFactSubchunk = true;
+
+                        // NumSamples:
+                        numSamples = (int)BinaryPrimitives.ReadUInt32LittleEndian(bytes[(offset + 8)..(offset + 12)]);
+
+                        // TODO: check for additional data here
+                        break;
                     }
-                    break;
+                    case "data": { // data sub-chunk
+                        /*
+                         * ------------------------------------------------- DATA SUBCHUNK -------------------------------------------------
+                         * This sub-chunk contains the size of the data and the actual audio:
+                         * 0    4   Subchunk2ID     Contains the letters "data" in big endian ASCII format
+                         * 4    4   Subchunk2Size   == NumSamples * NumChannels * BitsPerSample/8
+                         *                          This is the number of bytes in the data. You can also think of this as the size of the
+                         *                          read of the subchunk following this number.
+                         * 8    *   Data            The actual sound data.
+                         */
+
+                        if (!containsFormatSubchunk) throw new FormatException("WAVE data did not contain a FMT_ sub-chunk before the DATA sub-chunk.");
+                        if (!containsFactSubchunk) { // there is was no fact sub-chunk
+                            /*
+                             * Here we can calculate the number of samples from the Subchunk2Size:
+                             * Since the Subchunk2Size is equal to `NumSamples * NumChannels * BitsPerSample/8` we can reverse engineer this to
+                             * find NumSamples:
+                             * 
+                             * Subchunk2Size / (NumChannels * BitsPerSample/8) == NumSamples
+                             */
+                            numSamples = (int)(subchunkSize / blockAlign);
+                        }
+
+                        offset += 8; // move the offset to the start of the wave data
+
+                        /*
+                         * ----------------------------------------------- AudioClip Samples -----------------------------------------------
+                         * The next Subchunk2Size number of bytes are all audio data. This data is formatted slightly differently depending
+                         * on the number of bits/bytes per sample:
+                         * BITS/SAMPLE      DESCRIPTION
+                         * 8                Stored as unsigned BYTEs ranging from 0 to 255.
+                         * 8+               Stored as signed BYTES (e.g. 16 bits is between -32768 and 32767).
+                         */
+                        int sampleCount = numSamples * numChannels;
+                        float[] samples = new float[sampleCount];
+                        switch (audioFormat) {
+                            case WaveAudioFormat.PCM: {
+                                switch (bitsPerSample) {
+                                    case 8: { // ubyte
+                                        for (int i = 0; i < sampleCount; i++) { // iterate each sample
+                                            samples[i] = (bytes[offset + i] - 128) * _8BitPerSampleCoefficient;
+                                        }
+                                        break;
+                                    }
+                                    case 16: { // signed short
+                                        int sampleIndex;
+                                        for (int i = 0; i < sampleCount; i++) {
+                                            sampleIndex = offset + (i * 2);
+                                            samples[i] = BinaryPrimitives.ReadInt16LittleEndian(bytes[sampleIndex..(sampleIndex + 2)]) * _16BitPerSampleCoefficient;
+                                        }
+                                        break;
+                                    }
+                                    case 24: { // 3 signed bytes
+                                        int sampleIndex;
+                                        for (int i = 0; i < sampleCount; i++) {
+                                            sampleIndex = offset + (i * 3);
+                                            samples[i] = ((bytes[sampleIndex + 2] << 24 | bytes[sampleIndex + 1] << 16 | bytes[sampleIndex] << 8) >> 8) * _24BitPerSampleCoefficient;
+                                        }
+                                        break;
+                                    }
+                                    case 32: { // signed int
+                                        int sampleIndex;
+                                        for (int i = 0; i < sampleCount; i++) {
+                                            sampleIndex = offset + (i * 4);
+                                            samples[i] = BinaryPrimitives.ReadInt32LittleEndian(bytes[sampleIndex..(sampleIndex + 4)]) * _32BitPerSampleCoefficient;
+                                        }
+                                        break;
+                                    }
+                                    default: throw new NotSupportedException($"{bitsPerSample} bits per sample is not supported for WAVE format imports.");
+                                }
+                                break;
+                            }
+                            case WaveAudioFormat.IEEE_FLOAT: {
+                                switch (bitsPerSample) {
+                                    case 32: { // 32bit signed floating point number (float)
+                                        if (BitConverter.IsLittleEndian) {
+                                            for (int i = 0; i < sampleCount; i++) {
+                                                samples[i] = BitConverter.ToSingle(bytes, offset + (i * 4));
+                                            }
+                                        } else {
+                                            int sampleIndex;
+                                            for (int i = 0; i < sampleCount; i++) {
+                                                sampleIndex = offset + (i * 4);
+                                                samples[i] = BitConverter.ToSingle(
+                                                    BitConverter.GetBytes(
+                                                        BinaryPrimitives.ReadUInt32BigEndian(
+                                                            bytes[sampleIndex..(sampleIndex + 4)]
+                                                        )
+                                                    ),
+                                                    0
+                                                );
+                                            }
+                                        }
+                                        break;
+                                    }
+                                    case 64: { // 64bit signed floating point number (double)
+                                        if (BitConverter.IsLittleEndian) {
+                                            for (int i = 0; i < sampleCount; i++) {
+                                                samples[i] = (float)BitConverter.ToDouble(bytes, offset + (i * 4));
+                                            }
+                                        } else {
+                                            int sampleIndex;
+                                            for (int i = 0; i < sampleCount; i++) {
+                                                sampleIndex = offset + (i * 8);
+                                                samples[i] = (float)BitConverter.ToDouble(
+                                                    BitConverter.GetBytes(
+                                                        BinaryPrimitives.ReadUInt64BigEndian(
+                                                            bytes[sampleIndex..(sampleIndex + 8)]
+                                                        )
+                                                    ),
+                                                    0
+                                                );
+                                            }
+                                        }
+                                        break;
+                                    }
+                                    default: throw new NotSupportedException($"{bitsPerSample} bits per sample is not supported for WAVE format imports.");
+                                }
+                                break;
+                            }
+                            default: throw new NotSupportedException($"WAVE format `{audioFormat}` not supported.");
+                        }
+
+                        // create audio clip:
+                        AudioClip audioClip = AudioClip.Create(name, numSamples, numChannels, sampleRate, false);
+
+                        // set audio clip data:
+                        audioClip.SetData(samples, 0);
+
+                        // return audio clip:
+                        Debug.Log($"success: {audioFormat} {name} {fsr.FileName}");
+                        return audioClip;
+                    }
                 }
-                default: throw new NotSupportedException($"WAVE format `{audioFormat}` not supported.");
+
+                // move offset to expected start of the next sub-chunk:
+                offset += (int)(subchunkSize + 8);
             }
-
-            // create audio clip:
-
-            AudioClip audioClip = AudioClip.Create(name, numSamples, numChannels, sampleRate, false);
-            audioClip.SetData(samples, 0);
-            Debug.Log($"success: {audioFormat} {name} {fsr.FileName}");
-            return audioClip;
+            throw new FormatException($"WAVE data did not contain a DATA sub-chunk.");
         }
 
         #endregion
