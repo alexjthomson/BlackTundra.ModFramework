@@ -1,6 +1,10 @@
 using BlackTundra.Foundation.IO;
 
+using System;
+
 using UnityEngine;
+
+using Object = UnityEngine.Object;
 
 namespace BlackTundra.ModFramework.Model {
 
@@ -19,6 +23,8 @@ namespace BlackTundra.ModFramework.Model {
         #endregion
 
         #region variable
+
+        public readonly string name;
 
         private Material _material;
 
@@ -39,8 +45,11 @@ namespace BlackTundra.ModFramework.Model {
             in ulong guid,
             in ModAssetType type,
             in FileSystemReference fsr,
-            in string path
+            in string path,
+            in string name
         ) : base(modInstance, guid, type, fsr, path) {
+            if (name == null) throw new ArgumentNullException(nameof(name));
+            this.name = name;
             _material = null;
         }
 

@@ -82,9 +82,12 @@ namespace BlackTundra.ModFramework.Model {
         /// </summary>
         protected internal ModMaterialCollection ReferenceMaterial(in FileSystemReference materialFsr) {
             if (materialFsr == null) throw new ArgumentNullException(nameof(materialFsr));
-            ModMaterialCollection materialCollection = ModInstance.GetAsset<ModMaterialCollection>(materialFsr);
-            materialCollections = materialCollections.AddLast(materialCollection);
-            return materialCollection;
+            if (ModInstance.TryGetAsset(materialFsr, out ModMaterialCollection materialCollection)) {
+                materialCollections = materialCollections.AddLast(materialCollection);
+                return materialCollection;
+            } else {
+                return null;
+            }
         }
 
         #endregion

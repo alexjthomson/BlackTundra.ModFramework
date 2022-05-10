@@ -41,7 +41,15 @@ namespace BlackTundra.ModFramework {
 
         #region property
 
+        /// <summary>
+        /// <c>true</c> if the <see cref="ModAsset"/> is valid.
+        /// </summary>
         public abstract bool IsValid { get; }
+
+        /// <summary>
+        /// <c>true</c> if the <see cref="ModAsset"/> does not have a <see cref="path"/>.
+        /// </summary>
+        public bool IsInstanced => path == null;
 
         #endregion
 
@@ -54,9 +62,8 @@ namespace BlackTundra.ModFramework {
         /// <param name="fsrNameStartIndex">Index to start the substring from in the <see cref="FileSystemReference"/> to find the <see cref="path"/>.</param>
         protected internal ModAsset(in ModInstance modInstance, in ulong guid, in ModAssetType type, in FileSystemReference fsr, in string path) {
             if (modInstance == null) throw new ArgumentNullException(nameof(modInstance));
-            if (fsr == null) throw new ArgumentNullException(nameof(fsr));
-            if (!fsr.IsFile) throw new ArgumentException($"{nameof(fsr)} must reference a file.");
-            if (path == null) throw new ArgumentNullException(nameof(path));
+            if (fsr != null && !fsr.IsFile) throw new ArgumentException($"{nameof(fsr)} must reference a file.");
+            //if (path == null) throw new ArgumentNullException(nameof(path));
             this.modInstance = modInstance;
             this.guid = guid;
             this.type = type;
@@ -85,7 +92,7 @@ namespace BlackTundra.ModFramework {
 
         #region ToString
 
-        public override string ToString() => $"{modInstance.name}::{path} [{guid.ToHex()}] ({type})";
+        public override string ToString() => $"{modInstance.name}::{path ?? "$INSTANCED"} [{guid.ToHex()}] ({type})";
 
         #endregion
 

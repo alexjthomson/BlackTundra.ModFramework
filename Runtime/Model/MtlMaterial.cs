@@ -10,8 +10,6 @@ namespace BlackTundra.ModFramework.Model {
 
         #region variable
 
-        public readonly string name;
-
         internal Color baseColour;
         internal Color diffuseColour;
         internal Color specularColour;
@@ -27,13 +25,9 @@ namespace BlackTundra.ModFramework.Model {
         internal MtlMaterial(
             in ModInstance modInstance,
             in ulong guid,
-            in ModAssetType type,
-            in FileSystemReference fsr,
-            in string path,
             in string name
-        ) : base(modInstance, guid, type, fsr, path) {
+        ) : base(modInstance, guid, ModAssetType.MaterialMtl, null, null, name) {
             if (name == null) throw new ArgumentNullException(nameof(name));
-            this.name = name;
             baseColour = new Color(0.2f, 0.2f, 0.2f);
             diffuseColour = new Color(0.8f, 0.8f, 0.8f);
             specularColour = new Color(1.0f, 1.0f, 1.0f);

@@ -73,6 +73,15 @@ namespace BlackTundra.ModFramework.Model {
 
         #endregion
 
+        #region RegisterMaterial
+
+        protected void RegisterMaterial(ModMaterial material) {
+            if (material == null) throw new ArgumentNullException(nameof(material));
+            materialDictionary.Add(material.name, material);
+        }
+
+        #endregion
+
         #region Dispose
 
         public override void Dispose() {
