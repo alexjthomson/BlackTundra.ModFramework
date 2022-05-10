@@ -27,6 +27,8 @@ namespace BlackTundra.ModFramework.Utility {
                 "wav" => ModAssetType.MediaWav,
                 "flac" => ModAssetType.MediaFlac,
                 "mp3" => ModAssetType.MediaMP3,
+                // material:
+                "mtl" => ModAssetType.MaterialMtl,
                 // model:
                 "obj" => ModAssetType.ModelObj,
                 "fbx" => ModAssetType.ModelFbx,

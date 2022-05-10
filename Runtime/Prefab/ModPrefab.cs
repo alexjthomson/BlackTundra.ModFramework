@@ -1,3 +1,5 @@
+using BlackTundra.Foundation;
+using BlackTundra.Foundation.IO;
 using BlackTundra.Foundation.Utility;
 using BlackTundra.ModFramework.Utility;
 
@@ -5,6 +7,7 @@ using Newtonsoft.Json.Linq;
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 
 using UnityEngine;
@@ -13,22 +16,24 @@ using Object = UnityEngine.Object;
 
 namespace BlackTundra.ModFramework.Prefab {
 
-    public sealed class ModPrefab : IDisposable {
+    public sealed class ModPrefab : ModAsset {
 
-        #region variable
+        #region constant
 
-        /// <summary>
-        /// Reference to the cached <see cref="GameObject"/> to use as the <see cref="ModPrefab"/> <see cref="GameObject"/>.
-        /// </summary>
-        private readonly GameObject prefab;
+        private static readonly ConsoleFormatter ConsoleFormatter = new ConsoleFormatter(nameof(ModPrefab));
 
         #endregion
 
         #region constructor
 
-        internal ModPrefab(in JObject json) {
-            if (json == null) throw new ArgumentNullException(nameof(json));
-            prefab = ProcessObject(json, PrefabManager.CacheTransform);
+        internal ModPrefab(
+            in ModInstance modInstance,
+            in ulong guid,
+            in ModAssetType type,
+            in FileSystemReference fsr,
+            in string path
+            ) : base(modInstance, guid, type, fsr, path) {
+            
         }
 
         #endregion
@@ -38,37 +43,68 @@ namespace BlackTundra.ModFramework.Prefab {
         #region CreateInstance
 
         public GameObject CreateInstance() {
-            GameObject gameObject = Object.Instantiate(prefab, null);
-            gameObject.name = prefab.name;
-            return gameObject;
+            if (_asset != null && _asset is GameObject prefab) {
+                GameObject gameObject = Object.Instantiate(prefab, null);
+                gameObject.name = prefab.name;
+                return gameObject;
+            } else {
+                throw new InvalidOperationException($"{nameof(_asset)} type is not type `{nameof(GameObject)}`.");
+            }
         }
 
         public GameObject CreateInstance(in Transform parent) {
-            GameObject gameObject = Object.Instantiate(prefab, parent);
-            gameObject.name = prefab.name;
-            return gameObject;
+            if (_asset != null && _asset is GameObject prefab) {
+                GameObject gameObject = Object.Instantiate(prefab, parent);
+                gameObject.name = prefab.name;
+                return gameObject;
+            } else {
+                throw new InvalidOperationException($"{nameof(_asset)} type is not type `{nameof(GameObject)}`.");
+            }
         }
 
         public GameObject CreateInstance(in Vector3 position, in Quaternion rotation) {
-            GameObject gameObject = Object.Instantiate(prefab, position, rotation, null);
-            gameObject.name = prefab.name;
-            return gameObject;
+            if (_asset != null && _asset is GameObject prefab) {
+                GameObject gameObject = Object.Instantiate(prefab, position, rotation, null);
+                gameObject.name = prefab.name;
+                return gameObject;
+            } else {
+                throw new InvalidOperationException($"{nameof(_asset)} type is not type `{nameof(GameObject)}`.");
+            }
         }
 
         public GameObject CreateInstance(in Vector3 position, in Quaternion rotation, in Transform parent) {
-            GameObject gameObject = Object.Instantiate(prefab, position, rotation, parent);
-            gameObject.name = prefab.name;
-            return gameObject;
+            if (_asset != null && _asset is GameObject prefab) {
+                GameObject gameObject = Object.Instantiate(prefab, position, rotation, parent);
+                gameObject.name = prefab.name;
+                return gameObject;
+            } else {
+                throw new InvalidOperationException($"{nameof(_asset)} type is not type `{nameof(GameObject)}`.");
+            }
         }
 
         #endregion
 
-        #region ProcessObject
+        #region Import
+
+        protected internal sealed override void Import() {
+            // dispose of existing asset:
+            DisposeOfAsset();
+            // read json file:
+            if (!FileSystem.Read(fsr, out string jsonString, FileFormat.Standard)) throw new IOException($"Failed to read prefab JSON file at `{fsr}`.");
+            // parse json file contents:
+            JObject json = JObject.Parse(jsonString);
+            // import prefab asset:
+            _asset = ParseJsonPrefab(json, PrefabManager.CacheTransform);
+        }
+
+        #endregion
+
+        #region ParseJsonPrefab
 
         /// <summary>
-        /// Processes a <paramref name="json"/> object into a <see cref="GameObject"/>.
+        /// Parses <paramref name="json"/> to a <see cref="GameObject"/> prefab.
         /// </summary>
-        private GameObject ProcessObject(in JObject json, in Transform parent) {
+        private static GameObject ParseJsonPrefab(in JObject json, in Transform parent) {
             if (json == null) throw new ArgumentNullException(nameof(json));
             // get object name:
             string name = (string)json["name"];
@@ -142,7 +178,7 @@ namespace BlackTundra.ModFramework.Prefab {
                         currentType = components[componentIndex].GetType();
                     } while (currentType != targetType && ++componentIndex < components.Length);
                     if (currentType != targetType) { // target component type not found, this must mean the target component was not added to the object; stop here
-                        PrefabImporter.ConsoleFormatter.Warning(
+                        ConsoleFormatter.Warning(
                             $"Failed to find component of type `{targetType}` on object `{name}`."
                         );
                         break;
@@ -160,13 +196,13 @@ namespace BlackTundra.ModFramework.Prefab {
                             string propertyName = property.Name; // get the name of the property
                             PropertyInfo propertyInfo = targetType.GetProperty(propertyName); // search for the property
                             if (propertyInfo == null) { // no property found
-                                PrefabImporter.ConsoleFormatter.Warning(
+                                ConsoleFormatter.Warning(
                                     $"Failed to find property `{propertyName}` on component `{targetType}` on object `{name}`."
                                 );
                                 continue; // ignore this property
                             }
                             if (!propertyInfo.CanWrite) { // cannot write to property
-                                PrefabImporter.ConsoleFormatter.Warning(
+                                ConsoleFormatter.Warning(
                                     $"Cannot write to property `{propertyName}` on component `{targetType}` on object `{name}`."
                                 );
                                 continue; // ignore this property
@@ -178,14 +214,14 @@ namespace BlackTundra.ModFramework.Prefab {
                                 try {
                                     propertyInfo.SetValue(component, value);
                                 } catch (Exception exception) {
-                                    PrefabImporter.ConsoleFormatter.Error(
+                                    ConsoleFormatter.Error(
                                         $"Failed to write to property `{propertyName}` on component `{targetType}` on object `{name}`.",
                                         exception
                                     );
                                     continue; // ignore this property
                                 }
                             } else {
-                                PrefabImporter.ConsoleFormatter.Warning(
+                                ConsoleFormatter.Warning(
                                     $"Unsupported property type `{propertyType}` for property `{propertyName}` on component `{targetType}` on object `{name}`."
                                 );
                                 continue; // ignore this property
@@ -200,7 +236,7 @@ namespace BlackTundra.ModFramework.Prefab {
                 Transform childParent = gameObject.transform;
                 // create each child object:
                 foreach (JToken childJson in childrenJson) {
-                    ProcessObject((JObject)childJson, childParent);
+                    ParseJsonPrefab((JObject)childJson, childParent);
                 }
             }
             return gameObject;
@@ -210,8 +246,8 @@ namespace BlackTundra.ModFramework.Prefab {
 
         #region Dispose
 
-        public void Dispose() {
-            Object.Destroy(prefab);
+        public sealed override void Dispose() {
+            DisposeOfAsset();
         }
 
         #endregion

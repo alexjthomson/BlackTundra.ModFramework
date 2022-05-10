@@ -27,9 +27,12 @@ namespace BlackTundra.ModFramework {
         MediaFlac       = 2001,
         MediaMP3        = 2002,
 
+        // material:
+        MaterialMtl     = 3000,
+
         // model:
-        ModelObj        = 3000,
-        ModelFbx        = 3001,
+        ModelObj        = 4000,
+        ModelFbx        = 4001,
 
         // json:
         JsonObj         = 10000,

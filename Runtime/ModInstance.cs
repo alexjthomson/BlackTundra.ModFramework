@@ -27,7 +27,7 @@ namespace BlackTundra.ModFramework {
         /// <summary>
         /// Mod <see cref="Dictionary{TKey, TValue}"/>.
         /// </summary>
-        private static readonly Dictionary<int, ModInstance> ModDictionary = new Dictionary<int, ModInstance>();
+        internal static readonly Dictionary<int, ModInstance> ModDictionary = new Dictionary<int, ModInstance>();
 
         /// <summary>
         /// A <see cref="PackedBuffer{T}"/> that contains a reference to every <see cref="ModInstance"/>. The order that each <see cref="ModInstance"/> appears in
@@ -69,6 +69,11 @@ namespace BlackTundra.ModFramework {
         /// <see cref="FileSystemReference"/> to the mod directory.
         /// </summary>
         private readonly FileSystemReference fsr;
+
+        /// <summary>
+        /// Index of the an absolute path of a child <see cref="ModAsset"/> to start reading the <see cref="ModAsset.path"/>.
+        /// </summary>
+        internal int childModAssetFsrPathStartIndex;
 
         /// <summary>
         /// Name of the <see cref="ModInstance"/>.
@@ -159,6 +164,8 @@ namespace BlackTundra.ModFramework {
             if (fsr == null) throw new ArgumentNullException(nameof(fsr));
             if (!fsr.IsDirectory) throw new ArgumentException($"{nameof(fsr)} is not a directory.");
             this.fsr = fsr;
+            string fsrAbsolutePath = fsr.AbsolutePath;
+            childModAssetFsrPathStartIndex = fsrAbsolutePath.Length;
             // load manifest:
             JObject manifest = ReadManifest(fsr);
             if (manifest == null) throw new FormatException("No manifest file found.");
@@ -307,11 +314,11 @@ namespace BlackTundra.ModFramework {
             // remove existing content:
             UnloadAssets();
             // find absolute path length:
-            string absolutePath = fsr.AbsolutePath;
-            int absolutePathLength = absolutePath.Length;
+            string fsrAbsolutePath = fsr.AbsolutePath;
+            childModAssetFsrPathStartIndex = fsrAbsolutePath.Length;
             // discover assets:
             OrderedList<ModAssetType, ModAsset> assets = new OrderedList<ModAssetType, ModAsset>();
-            DiscoverAssets(fsr, absolutePathLength, assets);
+            DiscoverAssets(fsr, assets);
             ModImporter.ConsoleFormatter.Info($"Mod `{_name}` discovered {assets.Count} assets.");
             // import assets:
             ImportAssets(assets);
@@ -400,7 +407,7 @@ namespace BlackTundra.ModFramework {
         /// <summary>
         /// Discovers assets inside the specified <paramref name="fsr"/> and adds them to the <paramref name="assets"/> list.
         /// </summary>
-        private void DiscoverAssets(in FileSystemReference fsr, in int fsrNameStartIndex, in OrderedList<ModAssetType, ModAsset> assets) {
+        private void DiscoverAssets(in FileSystemReference fsr, in OrderedList<ModAssetType, ModAsset> assets) {
             // discover files:
             FileSystemReference file;
             FileSystemReference[] files = fsr.GetFiles();
@@ -409,13 +416,13 @@ namespace BlackTundra.ModFramework {
                 string fileName = file.FileName;
                 if (fileName[0] == '.' || fileName.Equals(ManifestFileName, StringComparison.OrdinalIgnoreCase)) continue; // skip hidden files and the manifest file
                 try {
-                    ModAsset asset = new ModAsset(this, file, fsrNameStartIndex);
+                    ModAsset asset = ModAssetFactory.Create(this, file);
                     if (asset.type != ModAssetType.None) {
                         assets.Add(asset.type, asset);
                     }
                 } catch (Exception exception) {
                     ModImporter.ConsoleFormatter.Error(
-                        $"Mod `{_name}` failed to discover asset `{file.AbsolutePath[fsrNameStartIndex..]}`",
+                        $"Mod `{_name}` failed to discover asset `{file.AbsolutePath[childModAssetFsrPathStartIndex..]}`",
                         exception
                     );
                 }
@@ -426,7 +433,7 @@ namespace BlackTundra.ModFramework {
             for (int i = directories.Length - 1; i >= 0; i--) {
                 directory = directories[i];
                 if (directory.DirectoryName[0] == '.') continue; // skip hidden directories
-                DiscoverAssets(directories[i], fsrNameStartIndex, assets);
+                DiscoverAssets(directories[i], assets);
             }
         }
 
@@ -688,6 +695,16 @@ namespace BlackTundra.ModFramework {
             return ModDictionary.TryGetValue(GetModID(modName), out ModInstance mod) ? mod.GetAsset(assetPath) : throw new KeyNotFoundException(modName);
         }
 
+        public static ModAsset GetAsset(in FileSystemReference fsr) {
+            if (fsr == null) throw new ArgumentNullException(nameof(fsr));
+            string absolutePath = fsr.AbsolutePath;
+            string localPath = absolutePath[ModImporter.ModDirectoryFSRLength..];
+            int modNameSeparator = localPath.IndexOf('/');
+            string modName = localPath[..modNameSeparator];
+            string assetPath = localPath[(modNameSeparator + 1)..];
+            return GetAsset(modName, assetPath);
+        }
+
         #endregion
 
         #region TryGetAsset
@@ -717,6 +734,16 @@ namespace BlackTundra.ModFramework {
                 asset = null;
                 return false;
             }
+        }
+
+        public static bool TryGetAsset(in FileSystemReference fsr, out ModAsset asset) {
+            if (fsr == null) throw new ArgumentNullException(nameof(fsr));
+            string absolutePath = fsr.AbsolutePath;
+            string localPath = absolutePath[ModImporter.ModDirectoryFSRLength..];
+            int modNameSeparator = localPath.IndexOf('/');
+            string modName = localPath[..modNameSeparator];
+            string assetPath = localPath[(modNameSeparator + 1)..];
+            return TryGetAsset(modName, assetPath, out asset);
         }
 
         #endregion

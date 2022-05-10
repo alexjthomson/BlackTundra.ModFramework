@@ -1,29 +1,51 @@
-//#define ASSET_IMPORTER_OBJ_FAIL_ON_UNKNOWN_CMD
-
 using BlackTundra.Foundation.IO;
+using BlackTundra.Foundation.Utility;
 
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 
 using UnityEngine;
 
 namespace BlackTundra.ModFramework.Model {
 
-    public static class ObjImporter {
+    public sealed class ObjModel : ModModel {
 
-        public static Mesh Import(in string name, in FileSystemReference fsr, in MeshBuilderOptions options = 0) {
-            if (name == null) throw new ArgumentNullException(nameof(name));
-            if (fsr == null) throw new ArgumentNullException(nameof(fsr));
-            if (!fsr.IsFile) throw new ArgumentException($"{nameof(fsr)} must reference a file.");
-            if (FileSystem.Read(fsr, out string obj, FileFormat.Standard)) {
-                return Import(name, obj, options);
-            } else {
-                throw new IOException($"Failed to read OBJ file at `{fsr.AbsolutePath}`.");
-            }
+        #region constructor
+
+        internal ObjModel(
+            in ModInstance modInstance,
+            in ulong guid,
+            in ModAssetType type,
+            in FileSystemReference fsr,
+            in string path,
+            MeshBuilderOptions meshBuilderOptions
+            ) : base(modInstance, guid, type, fsr, path, meshBuilderOptions) {
         }
 
-        public static Mesh Import(in string name, in string obj, in MeshBuilderOptions options = 0) {
+        #endregion
+
+        #region logic
+
+        #region Import
+
+        protected internal sealed override void Import() {
+            // dipose of exist asset:
+            DisposeOfAsset();
+            // read obj data:
+            if (!FileSystem.Read(fsr, out string obj, FileFormat.Standard)) {
+                throw new IOException($"Failed to read OBJ file at `{fsr}`.");
+            }
+            // parse obj data:
+            _asset = ParseObjData(guid.ToHex(), obj, meshBuilderOptions);
+        }
+
+        #endregion
+
+        #region ParseObjData
+
+        private Mesh ParseObjData(in string name, in string obj, in MeshBuilderOptions options = 0) {
             if (name == null) throw new ArgumentNullException(nameof(name));
             if (obj == null) throw new ArgumentNullException(nameof(obj));
             // find lines:
@@ -31,6 +53,9 @@ namespace BlackTundra.ModFramework.Model {
                 new string[] { "\r\n", "\r", "\n" },
                 StringSplitOptions.RemoveEmptyEntries
             );
+            // find current directory:
+            FileSystemReference parentFsr = fsr.GetParent();
+            string parentFsrPath = fsr.AbsolutePath;
             // create model data:
             List<Vector3> verticies = new List<Vector3>();
             List<Vector2> uvs = new List<Vector2>();
@@ -38,11 +63,13 @@ namespace BlackTundra.ModFramework.Model {
             List<VertexData> triangles = new List<VertexData>();
             // define helper variables:
             string[] lineData;
+            int lineDataCount;
             int dataCount;
             // iterate obj lines:
             for (int i = 0; i < lines.Length; i++) {
                 lineData = lines[i].Split();
-                dataCount = lineData.Length - 1; // find the number of entries in the data
+                lineDataCount = lineData.Length;
+                dataCount = lineDataCount - 1; // find the number of entries in the data
                 if (dataCount == -1) continue;
                 if (dataCount == 0) throw new FormatException($"Invalid line with no data at line `{i + 1}`.");
                 switch (lineData[0].ToLower()) { // switch on commands
@@ -131,19 +158,44 @@ namespace BlackTundra.ModFramework.Model {
                         // not implemented
                         break;
                     }
-                    case "#": break; // comment
-                    default: {
-#if ASSET_IMPORTER_OBJ_FAIL_ON_UNKNOWN_CMD
-                        throw new FormatException($"Invalid line type: `{lineData[0]}`.");
-#else
+                    case "mtllib": { // material
+                        /*
+                         * Materials describe the visual aspects of the polygons. Materials are stored in .mtl files; more than one
+                         * .mtl file may be referenced from within the OBJ file. The .mtl file may contains one or more named material
+                         * definition.
+                         */
+                        StringBuilder materialFile = new StringBuilder().Append(lineData[1]);
+                        for (int j = 2; j < lineDataCount; j++) {
+                            materialFile.Append(' ').Append(lineData[j]);
+                        }
+                        ReferenceMaterial(
+                            new FileSystemReference(
+                                string.Concat(parentFsrPath, materialFile.ToString()),
+                                false, // is not local
+                                false  // is file
+                            )
+                        );
                         break;
-#endif
                     }
+                    case "#": break; // comment
+                    default: break; // unknown command
                 }
             }
             // build mesh:
             return MeshBuilder.Build(name, verticies, uvs, normals, triangles, options);
         }
+
+        #endregion
+
+        #region Dispose
+
+        public sealed override void Dispose() {
+            DisposeOfAsset();
+        }
+
+        #endregion
+
+        #endregion
 
     }
 

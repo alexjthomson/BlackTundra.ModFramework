@@ -1,22 +1,23 @@
 using BlackTundra.Foundation.IO;
 using BlackTundra.Foundation.Utility;
-using BlackTundra.ModFramework.Media;
-using BlackTundra.ModFramework.Model;
-using BlackTundra.ModFramework.Prefab;
-using BlackTundra.ModFramework.Utility;
 
 using System;
 
+using Object = UnityEngine.Object;
+
 namespace BlackTundra.ModFramework {
 
-    public sealed class ModAsset : IDisposable {
+    /// <summary>
+    /// Describes a generic asset that belongs to a <see cref="modInstance"/>.
+    /// </summary>
+    public abstract class ModAsset : IDisposable {
 
         #region variable
 
         /// <summary>
         /// <see cref="ModInstance"/> that the <see cref="ModAsset"/> belongs to.
         /// </summary>
-        public readonly ModInstance mod;
+        public readonly ModInstance modInstance;
 
         /// <summary>
         /// <see cref="FileSystemReference"/> to the <see cref="ModAsset"/>.
@@ -24,7 +25,7 @@ namespace BlackTundra.ModFramework {
         public readonly FileSystemReference fsr;
 
         /// <summary>
-        /// Path of the <see cref="ModAsset"/> within the <see cref="mod"/>.
+        /// Path of the <see cref="ModAsset"/> within the <see cref="modInstance"/>.
         /// </summary>
         public readonly string path;
 
@@ -41,7 +42,7 @@ namespace BlackTundra.ModFramework {
         /// <summary>
         /// Reference to the actual asset.
         /// </summary>
-        private object _asset;
+        protected object _asset;
 
         #endregion
 
@@ -55,19 +56,19 @@ namespace BlackTundra.ModFramework {
 
         private ModAsset() => throw new NotSupportedException();
 
-        /// <param name="mod"><see cref="ModInstance"/> that the <see cref="ModAsset"/> belongs to.</param>
+        /// <param name="modInstance"><see cref="ModInstance"/> that the <see cref="ModAsset"/> belongs to.</param>
         /// <param name="fsr"><see cref="FileSystemReference"/> to the <see cref="ModAsset"/> file location.</param>
         /// <param name="fsrNameStartIndex">Index to start the substring from in the <see cref="FileSystemReference"/> to find the <see cref="path"/>.</param>
-        internal ModAsset(in ModInstance mod, in FileSystemReference fsr, in int fsrNameStartIndex) {
-            if (mod == null) throw new ArgumentNullException(nameof(mod));
+        protected internal ModAsset(in ModInstance modInstance, in ulong guid, in ModAssetType type, in FileSystemReference fsr, in string path) {
+            if (modInstance == null) throw new ArgumentNullException(nameof(modInstance));
             if (fsr == null) throw new ArgumentNullException(nameof(fsr));
             if (!fsr.IsFile) throw new ArgumentException($"{nameof(fsr)} must reference a file.");
-            this.mod = mod;
+            if (path == null) throw new ArgumentNullException(nameof(path));
+            this.modInstance = modInstance;
+            this.guid = guid;
+            this.type = type;
             this.fsr = fsr;
-            string absolutePath = fsr.AbsolutePath;
-            path = absolutePath[fsrNameStartIndex..];
-            guid = mod._guidIdentifier | ((ulong)path.ToLower().GetHashCode() & ModInstance.ModAssetGUIDMask);
-            type = ImportUtility.ExtensionToAssetType(fsr.FileExtension);
+            this.path = path;
             _asset = null;
         }
 
@@ -80,54 +81,35 @@ namespace BlackTundra.ModFramework {
         /// <summary>
         /// Imports the asset.
         /// </summary>
-        internal void Import() {
-            switch (type) {
-                // media:
-                case ModAssetType.MediaPng:
-                case ModAssetType.MediaBmp:
-                case ModAssetType.MediaTif:
-                case ModAssetType.MediaTga:
-                case ModAssetType.MediaPsd:
-                case ModAssetType.MediaJpg: {
-                    _asset = ImageImporter.Import(guid.ToHex(), fsr);
-                    break;
-                }
-                // audio:
-                case ModAssetType.MediaWav: {
-                    _asset = WavImporter.Import(guid.ToHex(), fsr);
-                    break;
-                }
-                // model:
-                case ModAssetType.ModelObj: {
-                    _asset = ObjImporter.Import(guid.ToHex(), fsr, MeshBuilderOptions.OptimizeMesh);
-                    break;
-                }
-                // json:
-                case ModAssetType.JsonObj: {
-                    _asset = PrefabImporter.Import(guid.ToHex(), fsr);
-                    break;
-                }
-                default: {
-                    _asset = null;
-                    break;
-                }
-            }
-        }
+        protected internal abstract void Import();
 
         #endregion
 
         #region Dispose
 
-        public void Dispose() {
-            // TODO: implement here
-            throw new NotImplementedException();
+        public abstract void Dispose();
+
+        #endregion
+
+        #region DisposeOfAsset
+
+        /// <summary>
+        /// Disposes of the <see cref="_asset"/> and assigns a <c>null</c> reference.
+        /// </summary>
+        protected virtual void DisposeOfAsset() {
+            if (_asset != null) {
+                if (_asset is Object obj) {
+                    Object.Destroy(obj);
+                }
+                _asset = null;
+            }
         }
 
         #endregion
 
         #region ToString
 
-        public sealed override string ToString() => $"{mod.name}::{path} [{guid.ToHex()}] ({type})";
+        public override string ToString() => $"{modInstance.name}::{path} [{guid.ToHex()}] ({type})";
 
         #endregion
 

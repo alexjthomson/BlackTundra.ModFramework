@@ -10,10 +10,7 @@ using UnityEngine;
 
 namespace BlackTundra.ModFramework.Media {
 
-    /// <summary>
-    /// Parses WAV files to an <see cref="AudioClip"/>.
-    /// </summary>
-    public static class WavImporter {
+    public sealed class WavAudio : ModAudio {
 
         #region constant
 
@@ -66,22 +63,40 @@ namespace BlackTundra.ModFramework.Media {
 
         #endregion
 
+        #region constructor
+
+        internal WavAudio(
+            in ModInstance modInstance,
+            in ulong guid,
+            in ModAssetType type,
+            in FileSystemReference fsr,
+            in string path
+            ) : base(modInstance, guid, type, fsr, path) {
+        }
+
+        #endregion
+
         #region logic
 
-        public static AudioClip Import(in string name, in FileSystemReference fsr) {
-            if (name == null) throw new ArgumentNullException(nameof(name));
-            if (fsr == null) throw new ArgumentNullException(nameof(fsr));
-            if (!fsr.IsFile) throw new ArgumentException($"{nameof(fsr)} must reference a file.");
-            // read data:
+        #region Import
+
+        protected internal sealed override void Import() {
+            // dispose of existing asset:
+            DisposeOfAsset();
+            // read wave data:
             if (!FileSystem.Read(fsr, out byte[] bytes, FileFormat.Standard)) {
                 throw new IOException($"Failed to read wav file at `{fsr}`.");
             }
-            // import data:
-            return Import(name, bytes);
+            // parse wave data:
+            _asset = ParseWaveData(guid.ToHex(), bytes);
         }
 
-        public static AudioClip Import(in string name, in byte[] bytes) {
-            if (name == null) throw new ArgumentNullException(nameof(name));
+        #endregion
+
+        #region ParseWaveData
+
+        private static AudioClip ParseWaveData(in string clipName, in byte[] bytes) {
+            if (clipName == null) throw new ArgumentNullException(nameof(clipName));
             if (bytes == null) throw new ArgumentNullException(nameof(bytes));
 
             /*
@@ -337,7 +352,7 @@ namespace BlackTundra.ModFramework.Media {
                         }
 
                         // create audio clip:
-                        AudioClip audioClip = AudioClip.Create(name, numSamples, numChannels, sampleRate, false);
+                        AudioClip audioClip = AudioClip.Create(clipName, numSamples, numChannels, sampleRate, false);
 
                         // set audio clip data:
                         audioClip.SetData(samples, 0);
@@ -352,6 +367,16 @@ namespace BlackTundra.ModFramework.Media {
             }
             throw new FormatException($"WAVE data did not contain a DATA sub-chunk.");
         }
+
+        #endregion
+
+        #region Dispose
+
+        public sealed override void Dispose() {
+            DisposeOfAsset();
+        }
+
+        #endregion
 
         #endregion
 

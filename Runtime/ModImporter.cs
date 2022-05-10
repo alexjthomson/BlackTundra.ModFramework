@@ -14,6 +14,24 @@ namespace BlackTundra.ModFramework {
 
         internal static readonly ConsoleFormatter ConsoleFormatter = new ConsoleFormatter(nameof(ModImporter));
 
+        /// <summary>
+        /// <see cref="FileSystemReference"/> to the mods directory.
+        /// </summary>
+        internal static readonly FileSystemReference ModDirectoryFSR = new FileSystemReference(
+            FileSystem.LocalModsDirectory,
+            true,
+            true
+        );
+
+        /// <summary>
+        /// Length of the <see cref="ModDirectoryFSR"/> absolute path.
+        /// </summary>
+        internal static readonly int ModDirectoryFSRLength = ModDirectoryFSR.AbsolutePath.Length;
+
+        #endregion
+
+        #region variable
+
         #endregion
 
         #region logic
@@ -39,10 +57,8 @@ namespace BlackTundra.ModFramework {
         #region ImportAll
 
         private static void ImportAll() {
-            // create file system reference to mods directory:
-            FileSystemReference modsFsr = new FileSystemReference(FileSystem.LocalModsDirectory, true, true);
             // find all subdirectories of the mods directory:
-            FileSystemReference[] modDirectories = modsFsr.GetDirectories();
+            FileSystemReference[] modDirectories = ModDirectoryFSR.GetDirectories();
             // estimate the number of mods by counting the subdirectories in the mods directory:
             int modCount = modDirectories.Length;
             if (modCount == 0) return; // no mods found
