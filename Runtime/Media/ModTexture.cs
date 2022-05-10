@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace BlackTundra.ModFramework.Media {
 
-    public sealed class ModImage : ModAsset {
+    public sealed class ModTexture : ModAsset {
 
         #region variable
 
@@ -18,11 +18,21 @@ namespace BlackTundra.ModFramework.Media {
         public readonly int anisoLevel;
         public readonly bool linear;
 
+        private Texture2D _texture;
+
+        #endregion
+
+        #region property
+
+        public Texture2D texture => _texture;
+
+        public sealed override bool IsValid => _texture != null;
+
         #endregion
 
         #region constructor
 
-        internal ModImage(
+        internal ModTexture(
             in ModInstance modInstance,
             in ulong guid,
             in ModAssetType type,
@@ -47,19 +57,11 @@ namespace BlackTundra.ModFramework.Media {
 
         #region logic
 
-        #region Dispose
-
-        public sealed override void Dispose() {
-            DisposeOfAsset();
-        }
-
-        #endregion
-
         #region Import
 
         protected internal sealed override void Import() {
             // dispose of existing asset:
-            DisposeOfAsset();
+            DisposeOfTexture();
             // read image data:
             if (!FileSystem.Read(fsr, out byte[] bytes, FileFormat.Standard)) {
                 throw new IOException($"Failed to read wav file at `{fsr}`.");
@@ -72,7 +74,26 @@ namespace BlackTundra.ModFramework.Media {
                 anisoLevel = anisoLevel
             };
             texture.LoadImage(bytes, false);
-            _asset = texture;
+            _texture = texture;
+        }
+
+        #endregion
+
+        #region Dispose
+
+        public sealed override void Dispose() {
+            DisposeOfTexture();
+        }
+
+        #endregion
+
+        #region DisposeOfTexture
+
+        private void DisposeOfTexture() {
+            if (_texture != null) {
+                Object.Destroy(_texture);
+                _texture = null;
+            }
         }
 
         #endregion

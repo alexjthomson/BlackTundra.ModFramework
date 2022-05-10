@@ -3,6 +3,10 @@ using BlackTundra.Foundation.Utility;
 
 using System;
 
+using UnityEngine;
+
+using Object = UnityEngine.Object;
+
 namespace BlackTundra.ModFramework.Model {
 
     public abstract class ModModel : ModAsset {
@@ -15,19 +19,28 @@ namespace BlackTundra.ModFramework.Model {
         public readonly MeshBuilderOptions meshBuilderOptions;
 
         /// <summary>
-        /// <see cref="ModMaterial"/> assets used by the <see cref="ModModel"/>.
+        /// <see cref="Mesh"/> imported.
         /// </summary>
-        private ModMaterial[] materials;
+        protected Mesh _mesh;
+
+        /// <summary>
+        /// <see cref="ModMaterialCollection"/> assets used by the <see cref="ModModel"/>.
+        /// </summary>
+        private ModMaterialCollection[] materialCollections;
 
         #endregion
 
         #region property
 
+        public Mesh mesh => _mesh;
+
+        public override bool IsValid => _mesh != null;
+
         /// <summary>
-        /// Total number of <see cref="ModMaterial"/> assets referenced/used by the <see cref="ModModel"/>.
+        /// Total number of <see cref="ModMaterialCollection"/> assets referenced/used by the <see cref="ModModel"/>.
         /// </summary>
         /// <seealso cref="GetMaterialAt(in int)"/>
-        public int MaterialCount => materials.Length;
+        public int MaterialCount => materialCollections.Length;
 
         #endregion
 
@@ -42,7 +55,7 @@ namespace BlackTundra.ModFramework.Model {
             in MeshBuilderOptions meshBuilderOptions
             ) : base(modInstance, guid, type, fsr, path) {
             this.meshBuilderOptions = meshBuilderOptions;
-            materials = new ModMaterial[0];
+            materialCollections = new ModMaterialCollection[0];
         }
 
         #endregion
@@ -52,12 +65,12 @@ namespace BlackTundra.ModFramework.Model {
         #region GetMaterialAt
 
         /// <returns>
-        /// Return the <see cref="ModMaterial"/> at the specified <paramref name="index"/>.
+        /// Return the <see cref="ModMaterialCollection"/> at the specified <paramref name="index"/>.
         /// </returns>
         /// <seealso cref="MaterialCount"/>
-        public ModMaterial GetMaterialAt(in int index) {
-            if (index < 0 || index >= materials.Length) throw new ArgumentOutOfRangeException(nameof(index));
-            return materials[index];
+        public ModMaterialCollection GetMaterialAt(in int index) {
+            if (index < 0 || index >= materialCollections.Length) throw new ArgumentOutOfRangeException(nameof(index));
+            return materialCollections[index];
         }
 
         #endregion
@@ -67,16 +80,11 @@ namespace BlackTundra.ModFramework.Model {
         /// <summary>
         /// Imports a material from the specified <paramref name="materialFsr"/>.
         /// </summary>
-        protected internal ModMaterial ReferenceMaterial(in FileSystemReference materialFsr) {
+        protected internal ModMaterialCollection ReferenceMaterial(in FileSystemReference materialFsr) {
             if (materialFsr == null) throw new ArgumentNullException(nameof(materialFsr));
-            ModAsset materialAsset = ModInstance.GetAsset(materialFsr);
-            if (materialAsset is ModMaterial material) {
-                materials = materials.AddLast(material);
-                return material;
-            } else {
-                materialAsset.Dispose();
-                throw new FormatException($"Failed to import material at `{materialFsr}` because asset type `{materialAsset.type}` is not a material.");
-            }
+            ModMaterialCollection materialCollection = ModInstance.GetAsset<ModMaterialCollection>(materialFsr);
+            materialCollections = materialCollections.AddLast(materialCollection);
+            return materialCollection;
         }
 
         #endregion
@@ -86,17 +94,20 @@ namespace BlackTundra.ModFramework.Model {
         /// <returns>
         /// Returns <c>true</c> if the <see cref="ModModel"/> is referencing the specified <paramref name="material"/>.
         /// </returns>
-        public bool IsReferencingMaterial(in ModMaterial material) {
+        public bool IsReferencingMaterial(in ModMaterialCollection material) {
             if (material == null) throw new ArgumentNullException(nameof(material));
-            return materials.Contains(material);
+            return materialCollections.Contains(material);
         }
 
         #endregion
 
         #region DisposeOfAsset
 
-        protected override void DisposeOfAsset() {
-            base.DisposeOfAsset();
+        protected virtual void DisposeOfAsset() {
+            if (_mesh != null) {
+                Object.Destroy(_mesh);
+                _mesh = null;
+            }
             DisposeOfMaterialAssets();
         }
 
@@ -105,16 +116,16 @@ namespace BlackTundra.ModFramework.Model {
         #region DisposeOfMaterialAssets
 
         /// <summary>
-        /// Disposes of any <see cref="ModMaterial"/> assets that the <see cref="ModModel"/> uses that are
+        /// Disposes of any <see cref="ModMaterialCollection"/> assets that the <see cref="ModModel"/> uses that are
         /// not referenced by any other <see cref="ModModel"/> assets.
         /// </summary>
         private void DisposeOfMaterialAssets() {
             // get a reference to the old materials:
-            ModMaterial[] oldMaterials = materials;
+            ModMaterialCollection[] oldMaterials = materialCollections;
             // clear the materials that the current model uses:
-            materials = new ModMaterial[0];
+            materialCollections = new ModMaterialCollection[0];
             // iterate each of the old materials:
-            ModMaterial material;
+            ModMaterialCollection material;
             for (int i = oldMaterials.Length - 1; i >= 0; i--) {
                 material = oldMaterials[i];
                 // check if the current material is referenced:

@@ -82,13 +82,13 @@ namespace BlackTundra.ModFramework.Media {
 
         protected internal sealed override void Import() {
             // dispose of existing asset:
-            DisposeOfAsset();
+            DisposeOfAudio();
             // read wave data:
             if (!FileSystem.Read(fsr, out byte[] bytes, FileFormat.Standard)) {
                 throw new IOException($"Failed to read wav file at `{fsr}`.");
             }
             // parse wave data:
-            _asset = ParseWaveData(guid.ToHex(), bytes);
+            _clip = ParseWaveData(guid.ToHex(), bytes);
         }
 
         #endregion
@@ -366,14 +366,6 @@ namespace BlackTundra.ModFramework.Media {
                 offset += (int)(subchunkSize + 8);
             }
             throw new FormatException($"WAVE data did not contain a DATA sub-chunk.");
-        }
-
-        #endregion
-
-        #region Dispose
-
-        public sealed override void Dispose() {
-            DisposeOfAsset();
         }
 
         #endregion

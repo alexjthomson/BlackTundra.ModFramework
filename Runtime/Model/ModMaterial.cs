@@ -1,16 +1,34 @@
 using BlackTundra.Foundation.IO;
 
-using System;
+using UnityEngine;
 
 namespace BlackTundra.ModFramework.Model {
 
     public abstract class ModMaterial : ModAsset {
 
+        #region constant
+
+        protected internal static readonly Shader StandardLitShader = Shader.Find(
+#if USE_UNIVERSAL_RENDER_PIPELINE
+            "Universal Render Pipeline/Lit"
+#else
+            "Standard"
+#endif
+        );
+
+        #endregion
+
         #region variable
+
+        private Material _material;
 
         #endregion
 
         #region property
+
+        public Material material => _material;
+
+        public override bool IsValid => _material != null;
 
         #endregion
 
@@ -22,45 +40,29 @@ namespace BlackTundra.ModFramework.Model {
             in ModAssetType type,
             in FileSystemReference fsr,
             in string path
-            ) : base(modInstance, guid, type, fsr, path) {
+        ) : base(modInstance, guid, type, fsr, path) {
+            _material = null;
         }
 
         #endregion
 
         #region logic
 
-        #region IsReferenced
+        #region Dispose
 
-        /// <returns>
-        /// Returns <c>true</c> if the <see cref="ModMaterial"/> is referenced by a <see cref="ModModel"/> in any <see cref="ModInstance"/>
-        /// that is currently loaded.
-        /// </returns>
-        public bool IsReferenced() {
-            if (IsReferencedByMod(modInstance)) return true;
-            foreach (ModInstance mod in ModInstance.ModDictionary.Values) {
-                if (mod != modInstance && IsReferencedByMod(mod)) {
-                    return true;
-                }
-            }
-            return false;
+        public override void Dispose() {
+            DisposeOfMaterial();
         }
 
         #endregion
 
-        #region IsReferencedByMod
+        #region DisposeOfMaterial
 
-        /// <returns>
-        /// Returns <c>true</c> if the <see cref="ModMaterial"/> is referenced a <see cref="ModModel"/> in the specified
-        /// <paramref name="modInstance"/>.
-        /// </returns>
-        public bool IsReferencedByMod(in ModInstance modInstance) {
-            if (modInstance == null) throw new ArgumentNullException(nameof(modInstance));
-            foreach (ModAsset asset in modInstance._assets.Values) {
-                if (asset is ModModel model) {
-                    if (model.IsReferencingMaterial(this)) return true;
-                }
+        protected virtual void DisposeOfMaterial() {
+            if (_material != null) {
+                Object.Destroy(_material);
+                _material = null;
             }
-            return false;
         }
 
         #endregion

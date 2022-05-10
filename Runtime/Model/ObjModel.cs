@@ -38,7 +38,7 @@ namespace BlackTundra.ModFramework.Model {
                 throw new IOException($"Failed to read OBJ file at `{fsr}`.");
             }
             // parse obj data:
-            _asset = ParseObjData(guid.ToHex(), obj, meshBuilderOptions);
+            _mesh = ParseObjData(guid.ToHex(), obj, meshBuilderOptions);
         }
 
         #endregion

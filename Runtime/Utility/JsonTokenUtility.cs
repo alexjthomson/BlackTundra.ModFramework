@@ -1,3 +1,5 @@
+using BlackTundra.ModFramework.Model;
+
 using Newtonsoft.Json.Linq;
 
 using System;
@@ -136,7 +138,7 @@ namespace BlackTundra.ModFramework.Utility {
             #endregion
 
             #region Mesh
-            { typeof(Mesh), (json, _) => ModInstance.GetAssetFromPath((string)json).value},
+            { typeof(Mesh), (json, _) => ModInstance.TryGetAssetFromPath((string)json, out ModAsset asset) && asset is ModModel model && model.IsValid ? model.mesh : null },
             #endregion
 
             #region Material

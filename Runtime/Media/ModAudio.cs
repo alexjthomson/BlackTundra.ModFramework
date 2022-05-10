@@ -1,6 +1,6 @@
 using BlackTundra.Foundation.IO;
 
-using System;
+using UnityEngine;
 
 namespace BlackTundra.ModFramework.Media {
 
@@ -8,9 +8,15 @@ namespace BlackTundra.ModFramework.Media {
 
         #region variable
 
+        protected AudioClip _clip;
+
         #endregion
 
         #region property
+
+        public AudioClip clip => _clip;
+
+        public override bool IsValid => _clip != null;
 
         #endregion
 
@@ -23,12 +29,31 @@ namespace BlackTundra.ModFramework.Media {
             in FileSystemReference fsr,
             in string path
             ) : base(modInstance, guid, type, fsr, path) {
-
+            _clip = null;
         }
 
         #endregion
 
         #region logic
+
+        #region Dispose
+
+        public override void Dispose() {
+            DisposeOfAudio();
+        }
+
+        #endregion
+
+        #region DisposeOfAudio
+
+        protected virtual void DisposeOfAudio() {
+            if (_clip != null) {
+                Object.Destroy(_clip);
+                _clip = null;
+            }
+        }
+
+        #endregion
 
         #endregion
 

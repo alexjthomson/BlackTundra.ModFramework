@@ -417,7 +417,7 @@ namespace BlackTundra.ModFramework {
                 if (fileName[0] == '.' || fileName.Equals(ManifestFileName, StringComparison.OrdinalIgnoreCase)) continue; // skip hidden files and the manifest file
                 try {
                     ModAsset asset = ModAssetFactory.Create(this, file);
-                    if (asset.type != ModAssetType.None) {
+                    if (asset != null && asset.type != ModAssetType.None) {
                         assets.Add(asset.type, asset);
                     }
                 } catch (Exception exception) {
@@ -451,9 +451,9 @@ namespace BlackTundra.ModFramework {
                     // import the asset:
                     asset.Import();
                     // validate imported asset:
-                    if (asset.value == null) { // asset has no value
+                    if (!asset.IsValid) { // asset has no value
                         ModImporter.ConsoleFormatter.Warning(
-                            $"Nothing imported for asset `{asset.path}`; the asset file extension is likely not supported, consider removing the file from the mod or using a `.` character prefix to indicate the file should be ignored."
+                            $"Invalid asset `{asset.path}` detected; the asset file extension is likely not supported, consider removing the file from the mod or using a `.` character prefix to indicate the file should be ignored."
                         );
                         failCount++;
                     } else if (_assets.ContainsKey(asset.guid)) { // asset with the same GUID already exists
@@ -679,42 +679,52 @@ namespace BlackTundra.ModFramework {
 
         #region GetAsset
 
-        public ModAsset GetAsset(in string assetPath) {
+        public T GetAsset<T>(in string assetPath) where T : ModAsset {
             if (assetPath == null) throw new ArgumentNullException(nameof(assetPath));
-            return GetAsset(GetAssetGUID(assetPath));
+            return GetAsset<T>(GetAssetGUID(assetPath));
         }
 
-        public ModAsset GetAsset(in ulong assetGuid) => _assets.TryGetValue(assetGuid, out ModAsset value)
-            ? value
+        public T GetAsset<T>(in ulong assetGuid) where T : ModAsset => _assets.TryGetValue(assetGuid, out ModAsset value)
+            ? (T)value
             : throw new KeyNotFoundException(assetGuid.ToHex());
 
-        public static ModAsset GetAsset(in string modName, in string assetPath) {
+        public static T GetAsset<T>(in string modName, in string assetPath) where T : ModAsset {
             if (modName == null) throw new ArgumentNullException(nameof(modName));
             if (assetPath == null) throw new ArgumentNullException(nameof(assetPath));
             int modId = GetModID(modName);
-            return ModDictionary.TryGetValue(GetModID(modName), out ModInstance mod) ? mod.GetAsset(assetPath) : throw new KeyNotFoundException(modName);
+            if (ModDictionary.TryGetValue(modId, out ModInstance mod)) {
+                return mod.GetAsset<T>(assetPath);
+            } else {
+                throw new KeyNotFoundException(modName);
+            }
         }
 
-        public static ModAsset GetAsset(in FileSystemReference fsr) {
+        public static T GetAsset<T>(in FileSystemReference fsr) where T : ModAsset {
             if (fsr == null) throw new ArgumentNullException(nameof(fsr));
             string absolutePath = fsr.AbsolutePath;
             string localPath = absolutePath[ModImporter.ModDirectoryFSRLength..];
             int modNameSeparator = localPath.IndexOf('/');
             string modName = localPath[..modNameSeparator];
             string assetPath = localPath[(modNameSeparator + 1)..];
-            return GetAsset(modName, assetPath);
+            return GetAsset<T>(modName, assetPath);
         }
 
         #endregion
 
         #region TryGetAsset
 
-        public bool TryGetAsset(in string assetPath, out ModAsset asset) {
+        public bool TryGetAsset<T>(in string assetPath, out T asset) where T : ModAsset {
             if (assetPath == null) throw new ArgumentNullException(nameof(assetPath));
-            return _assets.TryGetValue(GetAssetGUID(assetPath), out asset);
+            if (_assets.TryGetValue(GetAssetGUID(assetPath), out ModAsset modAsset) && modAsset is T tAsset) {
+                asset = tAsset;
+                return true;
+            } else {
+                asset = null;
+                return false;
+            }
         }
 
-        public static bool TryGetAsset(in string modName, in string assetPath, out ModAsset asset) {
+        public static bool TryGetAsset<T>(in string modName, in string assetPath, out T asset) where T : ModAsset {
             if (modName == null) throw new ArgumentNullException(nameof(modName));
             if (assetPath == null) throw new ArgumentNullException(nameof(assetPath));
             int modId = GetModID(modName);
@@ -726,17 +736,18 @@ namespace BlackTundra.ModFramework {
             }
         }
 
-        public static bool TryGetAsset(in ulong assetGuid, out ModAsset asset) {
+        public static bool TryGetAsset<T>(in ulong assetGuid, out T asset) where T : ModAsset {
             int modId = GetModID(assetGuid);
-            if (ModDictionary.TryGetValue(modId, out ModInstance mod)) {
-                return mod._assets.TryGetValue(assetGuid, out asset);
+            if (ModDictionary.TryGetValue(modId, out ModInstance mod) && mod._assets.TryGetValue(assetGuid, out ModAsset modAsset) && modAsset is T tAsset) {
+                asset = tAsset;
+                return true;
             } else {
                 asset = null;
                 return false;
             }
         }
 
-        public static bool TryGetAsset(in FileSystemReference fsr, out ModAsset asset) {
+        public static bool TryGetAsset<T>(in FileSystemReference fsr, out T asset) where T : ModAsset {
             if (fsr == null) throw new ArgumentNullException(nameof(fsr));
             string absolutePath = fsr.AbsolutePath;
             string localPath = absolutePath[ModImporter.ModDirectoryFSRLength..];
@@ -750,17 +761,17 @@ namespace BlackTundra.ModFramework {
 
         #region GetAssetFromPath
 
-        public static ModAsset GetAssetFromPath(in string fullAssetPath) {
+        public static T GetAssetFromPath<T>(in string fullAssetPath) where T : ModAsset {
             if (fullAssetPath == null) throw new ArgumentNullException(nameof(fullAssetPath));
             string[] paths = fullAssetPath.Split('/', 2);
-            return GetAsset(paths[0], paths[1]);
+            return GetAsset<T>(paths[0], paths[1]);
         }
 
         #endregion
 
         #region TryGetAssetFromPath
 
-        public static bool TryGetAssetFromPath(in string fullAssetPath, out ModAsset asset) {
+        public static bool TryGetAssetFromPath<T>(in string fullAssetPath, out T asset) where T : ModAsset {
             if (fullAssetPath == null) throw new ArgumentNullException(nameof(fullAssetPath));
             string[] paths = fullAssetPath.Split('/', 2);
             return TryGetAsset(paths[0], paths[1], out asset);
@@ -891,7 +902,7 @@ namespace BlackTundra.ModFramework {
                                 table[0, tableIndex] = $"<color=#{Colour.Red.hex}>{asset.guid.ToHex()}</color>";
                                 table[1, tableIndex] = ConsoleUtility.Escape(asset.path);
                                 table[2, tableIndex] = ConsoleUtility.Escape(asset.type.ToString());
-                                table[3, tableIndex] = ConsoleUtility.Escape(asset.value?.GetType().Name ?? $"<color=#{Colour.Purple.hex}>null</color>");
+                                table[3, tableIndex] = ConsoleUtility.Escape(asset.GetType().Name ?? $"<color=#{Colour.Purple.hex}>null</color>");
                                 tableIndex++;
                             }
                             ConsoleWindow.Print(string.Empty);

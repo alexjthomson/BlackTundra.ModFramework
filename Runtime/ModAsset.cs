@@ -3,8 +3,6 @@ using BlackTundra.Foundation.Utility;
 
 using System;
 
-using Object = UnityEngine.Object;
-
 namespace BlackTundra.ModFramework {
 
     /// <summary>
@@ -39,16 +37,11 @@ namespace BlackTundra.ModFramework {
         /// </summary>
         public readonly ModAssetType type;
 
-        /// <summary>
-        /// Reference to the actual asset.
-        /// </summary>
-        protected object _asset;
-
         #endregion
 
         #region property
 
-        public object value => _asset;
+        public abstract bool IsValid { get; }
 
         #endregion
 
@@ -69,7 +62,6 @@ namespace BlackTundra.ModFramework {
             this.type = type;
             this.fsr = fsr;
             this.path = path;
-            _asset = null;
         }
 
         #endregion
@@ -88,22 +80,6 @@ namespace BlackTundra.ModFramework {
         #region Dispose
 
         public abstract void Dispose();
-
-        #endregion
-
-        #region DisposeOfAsset
-
-        /// <summary>
-        /// Disposes of the <see cref="_asset"/> and assigns a <c>null</c> reference.
-        /// </summary>
-        protected virtual void DisposeOfAsset() {
-            if (_asset != null) {
-                if (_asset is Object obj) {
-                    Object.Destroy(obj);
-                }
-                _asset = null;
-            }
-        }
 
         #endregion
 

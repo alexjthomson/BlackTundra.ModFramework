@@ -1,8 +1,6 @@
 using BlackTundra.Foundation.IO;
-using BlackTundra.Foundation.Utility;
 
 using System;
-using System.IO;
 
 using UnityEngine;
 
@@ -12,9 +10,15 @@ namespace BlackTundra.ModFramework.Model {
 
         #region variable
 
-        #endregion
+        public readonly string name;
 
-        #region property
+        internal Color baseColour;
+        internal Color diffuseColour;
+        internal Color specularColour;
+        internal float alpha;
+        internal float shininess;
+        internal MtlIlluminationModel illuminationModel;
+        internal FileSystemReference textureMapFsr;
 
         #endregion
 
@@ -25,8 +29,18 @@ namespace BlackTundra.ModFramework.Model {
             in ulong guid,
             in ModAssetType type,
             in FileSystemReference fsr,
-            in string path
-            ) : base(modInstance, guid, type, fsr, path) {
+            in string path,
+            in string name
+        ) : base(modInstance, guid, type, fsr, path) {
+            if (name == null) throw new ArgumentNullException(nameof(name));
+            this.name = name;
+            baseColour = new Color(0.2f, 0.2f, 0.2f);
+            diffuseColour = new Color(0.8f, 0.8f, 0.8f);
+            specularColour = new Color(1.0f, 1.0f, 1.0f);
+            alpha = 1.0f;
+            shininess = 0.0f;
+            illuminationModel = MtlIlluminationModel.Specular;
+            textureMapFsr = null;
         }
 
         #endregion
@@ -36,30 +50,7 @@ namespace BlackTundra.ModFramework.Model {
         #region Import
 
         protected internal override void Import() {
-            // remove exting material asset:
-            DisposeOfAsset();
-            // load material data:
-            if (!FileSystem.Read(fsr, out string mtl, FileFormat.Standard)) {
-                throw new IOException($"Failed to read MTL file at `{fsr}`.");
-            }
-            // parse material data:
-            _asset = ParseMaterialData(guid.ToHex(), mtl);
-        }
-
-        #endregion
-
-        #region ParseMaterialData
-
-        private static Material ParseMaterialData(in string name, in string mtl) {
-            throw new NotImplementedException();
-        }
-
-        #endregion
-
-        #region Dispose
-
-        public override void Dispose() {
-            DisposeOfAsset();
+            throw new System.NotImplementedException();
         }
 
         #endregion

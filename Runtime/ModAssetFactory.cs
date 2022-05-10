@@ -21,7 +21,7 @@ namespace BlackTundra.ModFramework {
             ModAssetType assetType = ImportUtility.ExtensionToAssetType(fsr.FileExtension);
             return assetType switch {
                 // media:
-                ModAssetType.MediaPng or ModAssetType.MediaBmp or ModAssetType.MediaTif or ModAssetType.MediaTga or ModAssetType.MediaPsd or ModAssetType.MediaJpg => new ModImage(
+                ModAssetType.MediaPng or ModAssetType.MediaBmp or ModAssetType.MediaTif or ModAssetType.MediaTga or ModAssetType.MediaPsd or ModAssetType.MediaJpg => new ModTexture(
                     modInstance, guid, assetType, fsr, assetPath
                 ),
                 // audio:

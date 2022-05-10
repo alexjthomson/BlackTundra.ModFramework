@@ -24,6 +24,18 @@ namespace BlackTundra.ModFramework.Prefab {
 
         #endregion
 
+        #region variable
+
+        private GameObject _prefab;
+
+        #endregion
+
+        #region property
+
+        public sealed override bool IsValid => _prefab != null;
+
+        #endregion
+
         #region constructor
 
         internal ModPrefab(
@@ -43,43 +55,31 @@ namespace BlackTundra.ModFramework.Prefab {
         #region CreateInstance
 
         public GameObject CreateInstance() {
-            if (_asset != null && _asset is GameObject prefab) {
-                GameObject gameObject = Object.Instantiate(prefab, null);
-                gameObject.name = prefab.name;
-                return gameObject;
-            } else {
-                throw new InvalidOperationException($"{nameof(_asset)} type is not type `{nameof(GameObject)}`.");
-            }
+            if (_prefab == null) return null;
+            GameObject gameObject = Object.Instantiate(_prefab, null);
+            gameObject.name = _prefab.name;
+            return gameObject;
         }
 
         public GameObject CreateInstance(in Transform parent) {
-            if (_asset != null && _asset is GameObject prefab) {
-                GameObject gameObject = Object.Instantiate(prefab, parent);
-                gameObject.name = prefab.name;
-                return gameObject;
-            } else {
-                throw new InvalidOperationException($"{nameof(_asset)} type is not type `{nameof(GameObject)}`.");
-            }
+            if (_prefab == null) return null;
+            GameObject gameObject = Object.Instantiate(_prefab, parent);
+            gameObject.name = _prefab.name;
+            return gameObject;
         }
 
         public GameObject CreateInstance(in Vector3 position, in Quaternion rotation) {
-            if (_asset != null && _asset is GameObject prefab) {
-                GameObject gameObject = Object.Instantiate(prefab, position, rotation, null);
-                gameObject.name = prefab.name;
-                return gameObject;
-            } else {
-                throw new InvalidOperationException($"{nameof(_asset)} type is not type `{nameof(GameObject)}`.");
-            }
+            if (_prefab == null) return null;
+            GameObject gameObject = Object.Instantiate(_prefab, position, rotation, null);
+            gameObject.name = _prefab.name;
+            return gameObject;
         }
 
         public GameObject CreateInstance(in Vector3 position, in Quaternion rotation, in Transform parent) {
-            if (_asset != null && _asset is GameObject prefab) {
-                GameObject gameObject = Object.Instantiate(prefab, position, rotation, parent);
-                gameObject.name = prefab.name;
-                return gameObject;
-            } else {
-                throw new InvalidOperationException($"{nameof(_asset)} type is not type `{nameof(GameObject)}`.");
-            }
+            if (_prefab == null) return null;
+            GameObject gameObject = Object.Instantiate(_prefab, position, rotation, parent);
+            gameObject.name = _prefab.name;
+            return gameObject;
         }
 
         #endregion
@@ -88,13 +88,13 @@ namespace BlackTundra.ModFramework.Prefab {
 
         protected internal sealed override void Import() {
             // dispose of existing asset:
-            DisposeOfAsset();
+            DisposeOfPrefab();
             // read json file:
             if (!FileSystem.Read(fsr, out string jsonString, FileFormat.Standard)) throw new IOException($"Failed to read prefab JSON file at `{fsr}`.");
             // parse json file contents:
             JObject json = JObject.Parse(jsonString);
             // import prefab asset:
-            _asset = ParseJsonPrefab(json, PrefabManager.CacheTransform);
+            _prefab = ParseJsonPrefab(json, PrefabManager.CacheTransform);
         }
 
         #endregion
@@ -247,7 +247,18 @@ namespace BlackTundra.ModFramework.Prefab {
         #region Dispose
 
         public sealed override void Dispose() {
-            DisposeOfAsset();
+            DisposeOfPrefab();
+        }
+
+        #endregion
+
+        #region DisposeOfPrefab
+
+        private void DisposeOfPrefab() {
+            if (_prefab != null) {
+                Object.Destroy(_prefab);
+                _prefab = null;
+            }
         }
 
         #endregion
