@@ -50,6 +50,12 @@ namespace BlackTundra.ModFramework.Model {
         #region ParseMaterialData
 
         private void ParseMaterialData(in string name, in string mtl) {
+
+            // Useful MTL Specifications & Documentation:
+            // https://people.sc.fsu.edu/~jburkardt/data/mtl/mtl.html
+            // MTL Example:
+            // https://people.sc.fsu.edu/~jburkardt/data/mtl/example.mtl
+
             // read each line:
             string[] lines = mtl.Split(
                 new string[] { "\r\n", "\r", "\n" },
