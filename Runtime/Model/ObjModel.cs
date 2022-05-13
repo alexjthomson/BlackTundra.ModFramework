@@ -67,7 +67,7 @@ namespace BlackTundra.ModFramework.Model {
             int dataCount;
             // iterate obj lines:
             for (int i = 0; i < lines.Length; i++) {
-                lineData = lines[i].Split();
+                lineData = lineData = lines[i].Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 lineDataCount = lineData.Length;
                 dataCount = lineDataCount - 1; // find the number of entries in the data
                 if (dataCount == -1) continue;

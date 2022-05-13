@@ -1,4 +1,5 @@
 using BlackTundra.Foundation.IO;
+using BlackTundra.ModFramework.Media;
 
 using System;
 
@@ -10,13 +11,33 @@ namespace BlackTundra.ModFramework.Model {
 
         #region variable
 
-        internal Color baseColour;
-        internal Color diffuseColour;
-        internal Color specularColour;
-        internal float alpha;
-        internal float shininess;
-        internal MtlIlluminationModel illuminationModel;
-        internal FileSystemReference textureMapFsr;
+        internal Color _baseColour;
+        internal Color _specularColour;
+        internal Color _ambientColour;
+        internal float _alpha;
+        internal float _shininess;
+        internal MtlIlluminationModel _illuminationModel;
+        internal ModTexture _baseMap;
+
+        #endregion
+
+        #region property
+
+        public Color BaseColour => _baseColour;
+
+        public Color SpecularColour => _specularColour;
+
+        public Color AmbientColour => _ambientColour;
+
+        public float Alpha => _alpha;
+
+        public float Opacity => 1.0f - _alpha;
+
+        public float Shininess => _shininess;
+
+        public MtlIlluminationModel IlluminationModel => _illuminationModel;
+
+        public ModTexture BaseMapAsset => _baseMap;
 
         #endregion
 
@@ -28,13 +49,13 @@ namespace BlackTundra.ModFramework.Model {
             in string name
         ) : base(modInstance, guid, ModAssetType.MaterialMtl, null, null, name) {
             if (name == null) throw new ArgumentNullException(nameof(name));
-            baseColour = new Color(0.2f, 0.2f, 0.2f);
-            diffuseColour = new Color(0.8f, 0.8f, 0.8f);
-            specularColour = new Color(1.0f, 1.0f, 1.0f);
-            alpha = 1.0f;
-            shininess = 0.0f;
-            illuminationModel = MtlIlluminationModel.Specular;
-            textureMapFsr = null;
+            _baseColour = new Color(0.2f, 0.2f, 0.2f);
+            _specularColour = new Color(1.0f, 1.0f, 1.0f);
+            _ambientColour = new Color(0.8f, 0.8f, 0.8f);
+            _alpha = 1.0f;
+            _shininess = 0.0f;
+            _illuminationModel = MtlIlluminationModel.Specular;
+            _baseMap = null;
         }
 
         #endregion
@@ -44,7 +65,18 @@ namespace BlackTundra.ModFramework.Model {
         #region Import
 
         protected internal override void Import() {
-            throw new System.NotImplementedException();
+            _material = new Material(StandardLitShader);
+#if USE_UNIVERSAL_RENDER_PIPELINE
+            _material.SetOverrideTag("RenderType", _alpha >= 1.0f ? "Opaque" : "Transparent");
+            _material.SetColor("_BaseColor", new Color(_baseColour.r, _baseColour.g, _baseColour.b, _alpha));
+            _material.SetColor("_SpecColor", _specularColour);
+            _material.SetFloat("_Smoothness", _shininess);
+            if (_baseMap != null && _baseMap.texture != null) {
+                _material.SetTexture("_BaseMap", _baseMap.texture);
+            }
+#else
+            #warning Current render pipeline not supported by MtlMaterial import
+#endif
         }
 
         #endregion

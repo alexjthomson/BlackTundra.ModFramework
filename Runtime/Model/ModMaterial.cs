@@ -26,7 +26,7 @@ namespace BlackTundra.ModFramework.Model {
 
         public readonly string name;
 
-        private Material _material;
+        internal Material _material;
 
         #endregion
 
